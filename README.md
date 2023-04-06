@@ -6,3 +6,7 @@ Just as the name says.
 后期任务是完成GUI的构建并逐步测试完善
 
 现处于前期…………
+
+
+4.6 
+Mission:回归模块day1
