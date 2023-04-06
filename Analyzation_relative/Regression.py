@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from  statsmodels.api import ProbPlot
 import itertools   #* 用于进行解释变量名称的遍历。
 import sys
 #*----------------------------------------------------------------
@@ -42,11 +43,27 @@ def Formula_create(Label_list):
     # 返回结果列表
     return result
 
-
+def res_plot(Residual , figsize = (12 , 4) , dpi = 100):
+    """
+    该函数主要对残差进行散点图,pp、qq图绘制
+    并返回matplotlib的fig和axes
+    """
+    fig, axes = plt.subplots(1,3 , figsize=figsize, dpi=dpi)
+    X = np.arange(1,len(Residual)+1)
+    axes[0].scatter(X , Residual , s = 2 , alpha = 0.4)
+    axes[0].axhline(y = np.mean(Residual) , color='r', linestyle='--')
+    pqplot = ProbPlot(Residual , fit = True)
+    ppplot = pqplot.ppplot(line = '45' , ax = axes[1])
+    qqplot = pqplot.qqplot(line = 'q' , ax = axes[2])
+    axes[0].set_title("Scatter of res")
+    axes[1].set_title('Normal PP plot')
+    axes[2].set_title('Normal QQ plot')
+    return fig , axes
 
 
 
 
 if __name__=="__main__":
-    a = [1,2,3,4,5,'6']
-    print(Formula_create(a))
+    x = np.random.uniform(100 , 200 , 100)
+    fig , axes = res_plot(x)
+    plt.show()
