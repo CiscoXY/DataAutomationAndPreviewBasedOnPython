@@ -9,4 +9,6 @@ Just as the name says.
 
 
 4.6 
-Mission:回归模块day1
+Mission:
+* 回归模块day1  4.6  
+* 回归模块day2  4.7
