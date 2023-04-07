@@ -8,7 +8,7 @@ import itertools   #* 用于进行解释变量名称的遍历。
 import sys
 from scipy.stats import spearmanr
 from Statistical_inference import Normality_test
-from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white
+from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -46,22 +46,27 @@ def Formula_create(Label_list):
     # 返回结果列表
     return result
 
-def res_plot(Residual , figsize = (12 , 4) , dpi = 100):
+def res_plot(Residual ,fittedvalues , figsize = (8 , 8) , dpi = 100):
     """
-    该函数主要对残差进行散点图,pp、qq图绘制
+    该函数主要对残差进行散点图,时序图
+    pp、qq图绘制
     并返回matplotlib的fig和axes
     """
-    fig, axes = plt.subplots(1,3 , figsize=figsize, dpi=dpi)
+    fig, axes = plt.subplots(2,2 , figsize=figsize, dpi=dpi)
     fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
     X = np.arange(1,len(Residual)+1)
-    axes[0].scatter(X , Residual , s = 2 , alpha = 0.4)
-    axes[0].axhline(y = np.mean(Residual) , color='r', linestyle='--')
+    axes[0][0].scatter(fittedvalues , Residual , s = 2 , alpha = 0.4 , color = 'blue')
+    axes[0][1].scatter(X , Residual , s = 2 , alpha = 0.4)
+    axes[0][1].axhline(y = np.mean(Residual) , color='r', linestyle='--')
     pqplot = ProbPlot(Residual , fit = True)
-    ppplot = pqplot.ppplot(line = '45' , ax = axes[1])
-    qqplot = pqplot.qqplot(line = 'q' , ax = axes[2])
-    axes[0].set_title("Scatter of res")
-    axes[1].set_title('Normal PP plot')
-    axes[2].set_title('Normal QQ plot')
+    ppplot = pqplot.ppplot(line = '45' , ax = axes[1][0])
+    qqplot = pqplot.qqplot(line = 'q' , ax = axes[1][1])
+    axes[0][0].set_title('Scatter of res and y_predict')
+    axes[0][0].set_xlabel('y_predict') ; axes[0][0].set_ylabel('Residuals')
+    axes[0][1].set_title("Scatter of res")
+    axes[1][0].set_title('Normal PP plot')
+    axes[1][1].set_title('Normal QQ plot')
+    plt.subplots_adjust(hspace=0.3)
     return fig , axes
 
 def res_test(Residual , fittedvalues , X , significance_value = 0.05):
@@ -90,7 +95,6 @@ def res_test(Residual , fittedvalues , X , significance_value = 0.05):
         corr , p_value = spearmanr(X[label] , b = res_abs)
         if(p_value<= significance_value):
             # 如果出现spearman秩相关test显著，则添加相应数据到对应的dataframe当中
-            print('The p-value shows it is statistical significant that '+ label + ' is spearman_corr with the res')
             spearman_df.loc[label] = [corr , p_value]
     
     # Goldfeld-Quandt检验
@@ -99,7 +103,6 @@ def res_test(Residual , fittedvalues , X , significance_value = 0.05):
         [F , p_value , order] = het_goldfeldquandt(X.iloc[:,0] , X[Labels] , idx = index , split = 0.4) # 取前后40%的数据作为两个组进行格登菲尔德检验
         if(p_value<= significance_value):
             # 如果出现Goldfeld_Quandt显著，则添加相应数据到对应的dataframe当中
-            print('The G_Q test shows that '+label +' is the cause of heteroscedasticity')
             Goldfeld_Quandt_df.loc[label] = [F , p_value]
     
     # 接下来是基于回归的异方差检验
@@ -120,7 +123,12 @@ def res_test(Residual , fittedvalues , X , significance_value = 0.05):
         Reg_relative_df.loc['White_LM'] = [lm , lm_pvalue]
         Reg_relative_df.loc['White_F'] = [F , F_pvalue]
     
-    return norm_frame , spearman_df , Goldfeld_Quandt_df , Reg_relative_df
+    # 使用时序对于纯随机序列的LB统计量进行检验  自相关test
+    LB_df = pd.DataFrame(np.array(acorr_ljungbox(res, lags=10)).T , columns = ['LB_statistic' , 'p-value'] , index = np.arange(1,11))
+    
+    return norm_frame , spearman_df , Goldfeld_Quandt_df , Reg_relative_df , LB_df
+
+
 
 
 if __name__=="__main__":
@@ -129,6 +137,8 @@ if __name__=="__main__":
     model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
     fitvalue1_CY = model1_CY.fittedvalues
     res = model1_CY.resid
-    df1 , df2 , df3 , df4 = res_test(res , fitvalue1_CY , Chaoyang)
-    print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4)
+    df1 , df2 , df3 , df4  , df5= res_test(res , fitvalue1_CY , Chaoyang)
+    print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4  , '\n' , df5)
+    # fig , axes = res_plot(res , fitvalue1_CY)
+    # plt.show()
     
