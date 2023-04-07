@@ -11,4 +11,6 @@ Just as the name says.
 4.6 
 Mission:
 * 回归模块day1  4.6  
-* 回归模块day2  4.7
+* 回归模块day2  4.7 
+    v_1完成任务：正态性test和回归的异方差test(包括spearman秩相关，Goldfeld-Quandt，Breusch-Pagan ， White检验)
+    v_2待完成

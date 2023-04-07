@@ -8,7 +8,7 @@ import itertools   #* 用于进行解释变量名称的遍历。
 import sys
 from scipy.stats import spearmanr
 from Statistical_inference import Normality_test
-from statsmodels.stats.diagnostic import het_goldfeldquandt
+from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -102,11 +102,25 @@ def res_test(Residual , fittedvalues , X , significance_value = 0.05):
             print('The G_Q test shows that '+label +' is the cause of heteroscedasticity')
             Goldfeld_Quandt_df.loc[label] = [F , p_value]
     
-    # Glejser 检验
+    # 接下来是基于回归的异方差检验
+    Reg_relative_df =  pd.DataFrame(data=None,columns=['statistic','p-value']) # 创建空表
+    # Breusch-Pagan 检验
+    [lm , lm_pvalue , F , F_pvalue] = het_breuschpagan(Residual , X[Labels])
+    Reg_relative_df.loc['BP_LM'] = [lm , lm_pvalue]
+    Reg_relative_df.loc['BP_F'] = [F , F_pvalue]
+    # White 检验
+    for col in Labels:
+        # 获取该列的唯一值
+        unique_values = X[col].unique()
+        # 如果该列的唯一值只有两个，并且都是0或1，说明该列是二元的
+        if len(unique_values) == 2 and all(x in [0, 1] for x in unique_values):
+            judge = True
+    if(not judge): # 如果不是二元且均为0和1，则可以进行white检验
+        [lm , lm_pvalue , F , F_pvalue] = het_white(Residual , X[Labels])
+        Reg_relative_df.loc['White_LM'] = [lm , lm_pvalue]
+        Reg_relative_df.loc['White_F'] = [F , F_pvalue]
     
-    
-    
-    return norm_frame , spearman_df , Goldfeld_Quandt_df
+    return norm_frame , spearman_df , Goldfeld_Quandt_df , Reg_relative_df
 
 
 if __name__=="__main__":
@@ -115,6 +129,6 @@ if __name__=="__main__":
     model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
     fitvalue1_CY = model1_CY.fittedvalues
     res = model1_CY.resid
-    df1 , df2 , df3 = res_test(res , fitvalue1_CY , Chaoyang)
-    print(df1 ,'\n', df2 , '\n' , df3)
+    df1 , df2 , df3 , df4 = res_test(res , fitvalue1_CY , Chaoyang)
+    print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4)
     
