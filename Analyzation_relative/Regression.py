@@ -9,6 +9,7 @@ import sys
 from scipy.stats import spearmanr
 from Statistical_inference import Normality_test
 from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
+from statsmodels.stats.outliers_influence import reset_ramsey
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -128,8 +129,29 @@ def res_test(Residual , fittedvalues , X , significance_value = 0.05):
     
     return norm_frame , spearman_df , Goldfeld_Quandt_df , Reg_relative_df , LB_df
 
+def Endogeneity_test(model , degree = 5):
+    """
+    用于检验内生性,返两个test的统计量值和对应的p值
+    test是RESET 即 regression specification error test 用于检验模型是否因为遗漏高次项导致出现内生性
+    """
+    End_df = pd.DataFrame(data = None , columns = ['statistic' , 'p-value'])
+    result = reset_ramsey(res=model, degree=degree)
+    End_df.loc['RESET_test'] = [result.fvalue[0][0] , result.pvalue]
+    return End_df
 
-
+def Multicollinearity_test(data , ):
+    """
+    用于检验多重共线性
+    返回的dataframe由两部分组成
+    方差扩大因子法和特征值（病态指数法）`
+    """
+    Mul_df = pd.DataFrame(data = None , columns = ['statistic' , 'value'])
+    
+    
+    
+    
+    
+    
 
 if __name__=="__main__":
     df = pd.read_csv("data/test_data.csv",encoding = "utf-8")
@@ -137,8 +159,8 @@ if __name__=="__main__":
     model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
     fitvalue1_CY = model1_CY.fittedvalues
     res = model1_CY.resid
-    df1 , df2 , df3 , df4  , df5= res_test(res , fitvalue1_CY , Chaoyang)
-    print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4  , '\n' , df5)
+    # df1 , df2 , df3 , df4  , df5= res_test(res , fitvalue1_CY , Chaoyang)
+    # print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4  , '\n' , df5)
     # fig , axes = res_plot(res , fitvalue1_CY)
     # plt.show()
-    
+    print(Endogeneity_test(model1_CY))
