@@ -2,14 +2,15 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import statsmodels.formula.api as smf
-from  statsmodels.api import ProbPlot
 import itertools   #* 用于进行解释变量名称的遍历。
 import sys
+import statsmodels.formula.api as smf
+from  statsmodels.api import ProbPlot
 from scipy.stats import spearmanr
 from Statistical_inference import Normality_test
 from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
-from statsmodels.stats.outliers_influence import reset_ramsey
+from statsmodels.stats.outliers_influence import reset_ramsey , variance_inflation_factor
+from sklearn.linear_model import Ridge
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -19,34 +20,53 @@ params = {'legend.fontsize': 7,}
 
 plt.rcParams.update(params)
 
+def foo(data):
+    """
+    一个用于判断传入数据是dataframe类型还是array类型
+    """
+    if isinstance(data, pd.DataFrame):
+        return 1
+    elif isinstance(data, np.ndarray):
+        return 0
+
 def Formula_create(Label_list):
-    """
-    用于创建smf的formula,默认变量list的第一个元素为被解释变量
-    后续所有的变量均为解释变量
-    即创建所有子集对应的formula
-    """
-    k = len(Label_list)
-    if k<2: 
-        print("The length of Label isn't enough")
-        sys.exit(1)
-    # 创建解释变量的列表
-    Variable_list = [str(x) for x in Label_list[1:]]
-    Explained_variable = str(Label_list[0])
-    # 创建一个空列表，用来存放结果
+    """创建自变量和因变量的所有可能组合的公式"""
+    assert len(Label_list) >= 2, "The length of Label isn't enough"
+    Variable_list = Label_list[1:] 
     result = []
-    # 遍历每个可能的组合长度
-    for n in range(1, k + 1):
-        # 创建一个包含n个元素的所有组合的迭代器
-        combinations = itertools.combinations(Variable_list, n)
-        # 遍历每个组合
-        for c in combinations:
-            # 把每个元素转换成字符串，并且用加号连接起来
-            s = "+".join(x for x in c)
-            # 把字符串添加到结果列表中
-            result.append("~".join([Explained_variable, s]))
-    # 返回结果列表
+    for n in range(1, len(Variable_list) + 1): 
+        for c in itertools.combinations(Variable_list, n):
+            s = "+".join(c)
+            result.append("~".join([Label_list[0],s]))  
     return result
 
+def Formula_encoder(Label_list):
+    """
+    根据给的list创建公式
+    """
+    assert len(Label_list) >= 2, "The length of Label isn't enough"
+    result = Label_list[0]+'~'+Label_list[1]
+    if(len(Label_list) > 2):
+        result += '+'
+        result += "+".join(Label_list[2:])
+    return result
+
+def Formula_decoder(string):
+    """
+    根据公式返还对应的Label_list
+    """
+    Label_list = []
+    word = ''
+    for c in string:
+        if c == '~' or c == '+':
+            Label_list.append(word)
+            word = ''
+        else:
+            word += c
+    Label_list.append(word)
+    return Label_list
+
+    
 def res_plot(Residual ,fittedvalues , figsize = (8 , 8) , dpi = 100):
     """
     该函数主要对残差进行散点图,时序图
@@ -70,7 +90,8 @@ def res_plot(Residual ,fittedvalues , figsize = (8 , 8) , dpi = 100):
     plt.subplots_adjust(hspace=0.3)
     return fig , axes
 
-def res_test(Residual , fittedvalues , X , significance_value = 0.05):
+
+def res_test(Residual , X , significance_value = 0.05):
     """
     X : 数据阵,默认第一列为被解释变量
     significance_value默认为0.05
@@ -139,28 +160,89 @@ def Endogeneity_test(model , degree = 5):
     End_df.loc['RESET_test'] = [result.fvalue[0][0] , result.pvalue]
     return End_df
 
-def Multicollinearity_test(data , ):
+def Multicollinearity_test(data):
     """
-    用于检验多重共线性
+    用于检验多重共线性,data应当全是解释变量组成的dataframe或者np.array
     返回的dataframe由两部分组成
-    方差扩大因子法和特征值（病态指数法）`
+    方差扩大因子法和特征值（条件指数法）`
     """
-    Mul_df = pd.DataFrame(data = None , columns = ['statistic' , 'value'])
+    Mul_df = pd.DataFrame()
     
+    if isinstance(data, pd.DataFrame):
+        Columns = data.columns
+        X = data.values
+    else: 
+        X = data
+        Columns = [f'x{i+1}' for i in range(X.shape[1])]
+        
+    # 方差扩大因子法
+    vif = [variance_inflation_factor(X, i) for i in range(X.shape[1])]
     
+    # 条件指数
+    XTX = X.T @ X 
+    eigenvalues = np.linalg.eigvals(XTX)
+    max_eig = np.max(eigenvalues)  
+    min_eig = np.min(eigenvalues)
+    con_index = np.sqrt(max_eig/min_eig)
     
+    index = [f'{col}_VIF' for col in Columns] + ['条件指数']
+    Mul_df = pd.DataFrame({'value': vif + [con_index]}, index=index)
     
-    
-    
+    return Mul_df
 
+def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1) , ax = None):
+    """
+    传入dataframe类型的data,默认第一列为被解释变量，如果需要指定被解释变量，输入对应的列名称即可，为字符串
+    该函数主要进行岭回归,返回一个多维np矩阵,第一列为取的k的范围,默认为0-10,步长为0.1,剩下各列为回归系数在不同k取值下的岭回归值。
+    ax默认为None,即不绘图,如果传入ax则在这个ax上根据该np多维矩阵绘制岭迹分析图
+    """
+    # 获取被解释变量列名,默认取第一列
+    if explained_var is None:
+        explained_var = data.columns[0]
+        
+    # 指定被解释变量和自变量 
+    y = data[explained_var]
+    X = data.drop([explained_var], axis=1)
+    
+    # 岭回归,计算各alpha下的回归系数
+    coef_arr = []
+    for alpha in k:
+        ridge = Ridge(alpha=alpha)
+        ridge.fit(X, y)
+        coef_arr.append(ridge.coef_)
+    # 构造返回值   
+    ret = np.array(k).reshape(-1, 1)
+    ret = np.hstack((ret, np.array(coef_arr)))
+    
+    if ax is not None:  
+        for i, coef in enumerate(ret.T[1:]): 
+            ax.plot(k, coef, lw=3, label=data.columns[i]) 
+            
+        ax.set_xlabel('k')
+        ax.set_ylabel('value')
+        ax.set_title('岭迹分析图')
+        ax.legend()
+    return ret
+    
 if __name__=="__main__":
     df = pd.read_csv("data/test_data.csv",encoding = "utf-8")
     Chaoyang = df.loc[df["region"] == "朝阳" , ['rent' , 'area' , 'room' , 'subway']]
-    model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
-    fitvalue1_CY = model1_CY.fittedvalues
-    res = model1_CY.resid
+    # model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
+    # fitvalue1_CY = model1_CY.fittedvalues
+    # res = model1_CY.resid
+    
     # df1 , df2 , df3 , df4  , df5= res_test(res , fitvalue1_CY , Chaoyang)
     # print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4  , '\n' , df5)
+    
+    
     # fig , axes = res_plot(res , fitvalue1_CY)
     # plt.show()
-    print(Endogeneity_test(model1_CY))
+    
+    # print(Endogeneity_test(model1_CY))
+    
+    #print(Multicollinearity_test(Chaoyang[['area' , 'room' , 'subway']]))
+    
+    # fig , axes = plt.subplots(1 , 1 , figsize = (8 , 8) , dpi = 100)
+    # print(Ridge_trace_analysis(Chaoyang ,k = np.arange(0 , 10000 , 10) ,  ax = axes))
+    # plt.show()
+    print(Formula_decoder(Formula_encoder(Chaoyang.columns)))
