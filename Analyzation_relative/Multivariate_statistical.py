@@ -2,6 +2,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 #*from matplotlib.patches import Ellipse , Rectangle
 import numpy as np
+
 import pandas as pd
 import statsmodels.formula.api as smf
 import seaborn as sns
@@ -10,6 +11,8 @@ from scipy.stats import norm # 标准正太的api
 from scipy.stats import chi2 # 卡方分布的api
 from scipy.stats import t # t分布的api
 
+
+from scipy.linalg import svd
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -81,33 +84,51 @@ def T2_region(df , alpha = 0.05):
 
 
 
-def PCA_select(data , use_cov = True , persentage = 0.85 , standard = 0.3):
+def PCA(df , use_cor = True , percentage = 0.85 , ax = None):   #  搞定了！
     '''
-    传入数据框data,
-    默认使用协方差矩阵进行PCA分解,如果use_cov = False那么就会使用相关系数矩阵进行分解
+    传入数据框df,
+    默认使用协方差矩阵进行PCA分解,如果use_cor = False那么就会使用协方差矩阵进行分解
     传入希望的主成分权重(主成分对应特征根和/总特征根和),默认0.85,需要0<persentage<1
     standard = 共线性性的判断标准,即求解的最小特征值小于0.3
+    ax为传入的可供绘图的matplotlib子图,如果值为非None,那么在ax上绘制累计方差贡献率的帕累托图
     '''
-    if(persentage>1 or persentage<0):
-        print('权重需要介于0,1之间,请重新输入权重')
-        exit(-1)
-    if(use_cov):
-        under_resolve_matrix = data.cov().values
+    # Check df is a dataframe
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError('df should be a dataframe')
+    
+    if use_cor:
+        cov_matrix = df.corr()
     else:
-        under_resolve_matrix = data.corr(method = 'pearson').values
-    lambdaarray , vectorarray = np.linalg.eig(under_resolve_matrix) #* 获取这个矩阵的特征值和特征向量
-    vectorarray = vectorarray.T #*由于vectorarray第一列对应第一个特征值，但是后续筛选要的是第一行对应对一个特征值，所以转置以下
-    if(np.min(lambdaarray)<standard): #* 共线性性的判断标准
-        print('最小特征值为%f'%np.min(lambdaarray))
-        exit(-1)
-    lambda_reverse = np.sort(lambdaarray)[::-1] ; lambda_reverse_index = np.argsort(lambdaarray)[::-1]
-    k = 1
-    while(np.sum(lambda_reverse[:k])/np.sum(lambdaarray) < persentage): #*当选取的主成分对应的特征值和占比小于persentage时,增加一个选择
-        k += 1
-    picked_lambda = lambda_reverse[:k] #* 获得前k个大的主成分向量对应的特征值
-    picked_vector = vectorarray[lambda_reverse_index[:k]]
+        cov_matrix = df.cov()
+    # Perform SVD on the cov_matrix 
+    U, S, V = svd(cov_matrix)
+    print(S)
+    # Calculate the explained variance ratio and eigenvectors
+    variance_explained = S/np.sum(S) # 计算各特征向量的方差贡献率
+    cumulative_explained = variance_explained #计算累计方差贡献率
+    
+    for i in range(1, len(S)):
+        cumulative_explained[i] = cumulative_explained[i-1] +variance_explained[i]
+    cumulative_explained = np.round(cumulative_explained , 3)
+    if ax is not None:
+        x = range(1 , len(S)+1)
+        ax.bar(x , cumulative_explained , color= (240/255, 154/255, 74/255 , 0.5) , width = 0.5)
+        ax.plot(x , cumulative_explained , '-o' , label = 'Cumulative Explained Variance')
+        ax.set_xlabel('累计主成分数量') 
+        ax.set_ylabel('Cumulative Explained Variance')
+        ax.set_xticks(x)
+        for x, y in zip(x, cumulative_explained):
+            ax.text(x, y-0.05, str(y), ha='center')
+        ax.legend(loc = 'best')
+        ax.set_title('方差累计贡献率')
+        ax.grid()
+    
+    
+    for index , i in enumerate(cumulative_explained):
+        if i >= percentage:
+            return V.T[:,:index+1] # 选取满足累计方差解释率到persentage的index个主成分对应的特征向量并返回
 
-    return picked_lambda , picked_vector #* 返回筛选出来的主成分和对应的特征向量
+
 
 def CCA_select(data_X , data_Y , cca_num , is_cov = False , Cov = None):
     '''
@@ -188,3 +209,17 @@ def Fisher_linear_discriminant(X , Y , Z , criterion_params = 1):
     linear_values = np.dot(np.dot(np.array([x1_bar - y1_bar]) , Sp_inv) , copy_Z.T) - m # 获得计算后的线性判别函数的值
     Judge_array = linear_values >= np.log(criterion_params) # 如果大于等于 则分配到X所属类 反之分类到Y所属类
     return Judge_array # 返回一个bool类型的数组，True为X所属类，False为Y所属类
+
+
+
+
+if __name__=="__main__":
+    df = pd.read_table("data/T5-1.dat", sep="\s+",header = None)
+    # df = pd.read_csv("data/test_data.csv",encoding = "utf-8")
+    # df = df.loc[df["region"] == "朝阳" , ['rent' , 'area' , 'room' , 'subway']]
+
+    fig , axes = plt.subplots(1 ,1 , figsize = (6 ,6) , dpi = 100)
+    eng_v = PCA(pd.DataFrame(df) ,use_cor=False ,  ax = axes , percentage = 0.99)
+    print(eng_v)
+    print(np.cov((df @ eng_v).T))
+    plt.show()

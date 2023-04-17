@@ -11,6 +11,8 @@ from Statistical_inference import Normality_test
 from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
 from statsmodels.stats.outliers_influence import reset_ramsey , variance_inflation_factor
 from sklearn.linear_model import Ridge
+
+
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文
 plt.rcParams['axes.unicode_minus']=False# *允许显示坐标轴负数
@@ -193,7 +195,7 @@ def Multicollinearity_test(data):
 def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1) , ax = None):
     """
     传入dataframe类型的data,默认第一列为被解释变量，如果需要指定被解释变量，输入对应的列名称即可，为字符串
-    该函数主要进行岭回归,返回一个多维np矩阵,第一列为取的k的范围,默认为0-10,步长为0.1,剩下各列为回归系数在不同k取值下的岭回归值。
+    该函数主要进行岭回归,返回一个多维np矩阵,第一列为取的k的范围,默认为0-100,步长为1,剩下各列为回归系数在不同k取值下的岭回归值。
     ax默认为None,即不绘图,如果传入ax则在这个ax上根据该np多维矩阵绘制岭迹分析图
     """
     # 获取被解释变量列名,默认取第一列
@@ -216,7 +218,7 @@ def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1
     
     if ax is not None:  
         for i, coef in enumerate(ret.T[1:]): 
-            ax.plot(k, coef, lw=3, label=data.columns[i]) 
+            ax.plot(k, coef, lw=1.5, label=data.columns[i]) 
             
         ax.set_xlabel('k')
         ax.set_ylabel('value')
@@ -242,7 +244,6 @@ if __name__=="__main__":
     
     #print(Multicollinearity_test(Chaoyang[['area' , 'room' , 'subway']]))
     
-    # fig , axes = plt.subplots(1 , 1 , figsize = (8 , 8) , dpi = 100)
-    # print(Ridge_trace_analysis(Chaoyang ,k = np.arange(0 , 10000 , 10) ,  ax = axes))
-    # plt.show()
-    print(Formula_decoder(Formula_encoder(Chaoyang.columns)))
+    fig , axes = plt.subplots(1 , 1 , figsize = (8 , 8) , dpi = 100)
+    print(Ridge_trace_analysis(Chaoyang ,k = np.arange(0 , 10000 , 10) ,  ax = axes))
+    plt.show()
