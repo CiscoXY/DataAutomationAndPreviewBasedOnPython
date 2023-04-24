@@ -32,7 +32,10 @@ def Normality_test(data , figsize = (8 , 4) , dpi = 100 , kde = True , plot = Tr
         Anderson = anderson(data)
         Index = Anderson.critical_values>Anderson.statistic
         Index = [i for i, x in enumerate(Index) if (not x)]
-        Anderson = [Anderson.statistic , Anderson.significance_level[max(Index)]/100] # 获得对应的统计量和p值
+        if(len(Index)):
+            Anderson = [Anderson.statistic , Anderson.significance_level[max(Index)]/100] # 获得对应的统计量和p值
+        else:
+            Anderson = [Anderson.statistic , 0.15] # 如果index本身是空的，那么说明哪个显著性水平都不能说明数据非正态
         sta_frame = pd.DataFrame(np.array([Shapiro , Anderson]) , columns = ['statistic' , 'p-value'] , index = ['Shapiro-Wilk' , 'Anderson-Darling'])
         
     if(plot):
