@@ -1,15 +1,21 @@
+import sys
+sys.path.append('./')
+from datetime import datetime
+import os
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import itertools   #* 用于进行解释变量名称的遍历。
 import random
-from datetime import datetime
-import os
+
 import statsmodels.formula.api as smf
 from  statsmodels.api import ProbPlot
 from scipy.stats import spearmanr
-from Statistical_inference import Normality_test
+
+from Analyzation_relative.Statistical_inference import Normality_test
+
 from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
 from statsmodels.stats.outliers_influence import reset_ramsey , variance_inflation_factor
 from sklearn.linear_model import Ridge
@@ -275,7 +281,7 @@ def Stepwise_reg(data ,summary_output = True ,  significance_level = 0.05 , high
     
     current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' # 记录当前的系统时间
     
-    dir_path = './result_output/'+current_time
+    dir_path = './reg_result_output/'+current_time
     
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
@@ -288,7 +294,7 @@ def Stepwise_reg(data ,summary_output = True ,  significance_level = 0.05 , high
     # 初始随机选取3个label
     explained_vari = data.columns[0] # 获取被解释变量的label
     Labels = data.columns[1:].tolist() # 获取解释变量的labels
-    for i in range(int(len(Labels) * 0.1)): # 进行极限30次的选取，如果30次都没有选择到不存在异方差和自相关的初始化label
+    for i in range(int(len(Labels) * 0.6)): # 进行极限30次的选取，如果30次都没有选择到不存在异方差和自相关的初始化label
         init_labels , left_labels = random_subset(Labels , k = 3)
         formula = Formula_encoder([explained_vari] + init_labels)
         print('init_formula is '+ formula)
