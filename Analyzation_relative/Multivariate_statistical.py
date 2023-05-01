@@ -4,14 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import pandas as pd
-import statsmodels.formula.api as smf
-import seaborn as sns
-from scipy.stats import f # F分布相关的api
-from scipy.stats import norm # 标准正太的api
-from scipy.stats import chi2 # 卡方分布的api
-from scipy.stats import t # t分布的api
-
-
+from scipy.stats import f , t 
 from scipy.linalg import svd
 #*----------------------------------------------------------------
 mpl.rcParams['font.sans-serif'] = ['SimHei'] # *允许显示中文

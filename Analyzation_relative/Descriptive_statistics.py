@@ -302,7 +302,7 @@ def Two_dim_autoplt(data , dataclass , filepath = None , save = True , show = Fa
     if filepath == None:
         dir_path = './descriptive_result_output/'+current_time
     else:
-        dir_path = filepath + '/' + current_time
+        dir_path = filepath
     if not os.path.exists(dir_path):  # 如果不存在该文件夹，则创建该文件夹。
         os.makedirs(dir_path)
     
@@ -471,7 +471,7 @@ def Three_dim_autoplt(data , dataclass , filepath = None , save = True , show = 
     if filepath == None:
         dir_path = './descriptive_result_output/'+current_time
     else:
-        dir_path = filepath + '/' + current_time
+        dir_path = filepath
     if not os.path.exists(dir_path):  # 如果不存在该文件夹，则创建该文件夹。
         os.makedirs(dir_path)
     
@@ -479,7 +479,6 @@ def Three_dim_autoplt(data , dataclass , filepath = None , save = True , show = 
 
 
     new_data , new_class = data_sort(data , dataclass) # 对原data依照dataclass排序并获得排序后的data和class
-
     col_names = new_data.columns.to_list()
     
     # 3个数值型变量
@@ -497,7 +496,7 @@ def Three_dim_autoplt(data , dataclass , filepath = None , save = True , show = 
         if show : plt.show()
         
         # 随后绘制矩阵散点图
-        sns.pairplot(new_data , kind='reg',diag_kind='hist' , plot_kws = {'scatter_kws' : {'alpha' : 0.6 , 's': 7}})
+        sns.pairplot(new_data , kind='reg',diag_kind='hist' , plot_kws = {'scatter_kws' : {'alpha' : 0.6 , 's': 7},'line_kws':{'color' : (232/255, 59/255, 12/255 , 0.5) , 'linewidth' : 1}} )
         fig = plt.gcf()
         fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
         if save : plt.savefig(dir_path + '/Matrix_graph' + '.png' , dpi = dpi)
@@ -520,15 +519,286 @@ def Three_dim_autoplt(data , dataclass , filepath = None , save = True , show = 
         
         if save : plt.savefig(dir_path + '/HeatMap' + '.png' , dpi = dpi)
         if show : plt.show()
+    
+    # 2个数值型一个分类型(分为二分和多分类)
+    
+    elif(eq(new_class , [0 , 0 , 1]) or eq(new_class , [0 , 0 , 2])):
+        # 首先绘制各自的一维图，合并成一个大图
+        if figsize == None : figsize = (8 , 12)
         
+        fig , axes = plt.subplots(3 , 2 , figsize = figsize , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+        
+        for i in range(2):
+            Numerical_autoplt(new_data[col_names[i]] , ax1 = axes[i][0] , ax2 = axes[i][1])
+        
+        if(new_class[-1] == 1): # 如果是2分类则绘制2分类的图
+            Binary_autoplt(new_data[col_names[2]] , ax1 = axes[2][0] , ax2 = axes[2][1])
+        else: # 如果是多分类则绘制多分类的图
+            Multitpye_autoplt(new_data[col_names[2]] , ax1 = axes[2][0] , ax2 = axes[2][1])
+        
+        plt.tight_layout() # 自动调整子图间距
+        if save : plt.savefig(dir_path + '/ ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
+            
+        # 绘制各数值变量的不同分类下的kde
+            
+        fig , axes = plt.subplots(1 , 2 , figsize = (10 , 5) , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            
+        Multi_value = new_data.iloc[: , 2].unique() # 获取这个多分类变量的各个值
+        colors = sns.husl_palette(len(Multi_value)) # 获取对应这个长度的不同颜色盘
+        # print(len(Multi_value) , len(colors))   此处供给于debug，如果出现了调色板不够用的时候，请查看长度是否一致
+        # print(colors)
+        for index , value in enumerate(Multi_value): # 根据各个类别绘制对应类别的核密度曲线
+            sns.kdeplot(new_data[new_data.iloc[: , 2] == value].iloc[: , 0] , color = colors[index] ,shade=True , alpha = 0.7 ,  ax = axes[0] , label = 'Kde for ' + str(value))
+            sns.kdeplot(new_data[new_data.iloc[: , 2] == value].iloc[: , 1] , color = colors[index] ,shade=True , alpha = 0.7 ,  ax = axes[1] , label = 'Kde for ' + str(value))
+        for i in range(2):
+            axes[i].grid()
+            axes[i].legend()
+            axes[i].set_xlabel(col_names[2])
+            axes[i].set_ylabel(col_names[i])
+            axes[i].set_title('Differ kde')
 
-def One_dim_hist(data , figsize = (6,6) , bins = 10 , alpha = 0.7 , histtype = 'bar' , edgecolor = 'b'):
-    fig, axes = plt.subplots(figsize=figsize, dpi=150)
-    fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
-    axes.hist(data , bins = bins , alpha = alpha , histtype = histtype , edgecolor = edgecolor)
-    return fig , axes
+        plt.tight_layout() # 自动调整子图间距
+        if save : plt.savefig(dir_path + '/diff_kde of ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
+        
+        # 绘制二维散点图，用不同类别做颜色标注
+        
+        fig , axes = plt.subplots(figsize = (10 , 10) , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+        
+        sns.scatterplot(data=new_data, x=col_names[0], y=col_names[1], hue=col_names[2], palette=colors , ax = axes , s = 8 , alpha = 0.7)
+        
+        if save : plt.savefig(dir_path + '/scatter of ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
+    
+    # 1数值2个分类
+    
+    elif(eq(new_class , [0 , 1 , 1]) or eq(new_class , [0 , 1 , 2]) or eq(new_class , [0 , 2 , 2])): 
+        # 首先绘制各自的一维图，合并成一个大图
+        if figsize == None : figsize = (8 , 12)
+        
+        fig , axes = plt.subplots(3 , 2 , figsize = figsize , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+        
+        Numerical_autoplt(new_data[col_names[0]] , ax1 = axes[0][0] , ax2 = axes[0][1])
+        for i in range(1,3):
+            if(new_class[i] == 1):
+                Binary_autoplt(new_data.iloc[: , i] , ax1 = axes[i][0] , ax2 = axes[i][1])
+            else:
+                Multitpye_autoplt(new_data.iloc[: , i] , ax1 = axes[i][0] , ax2 = axes[i][1])
+        plt.tight_layout() # 自动调整子图间距
+        if save : plt.savefig(dir_path + '/ ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
 
+        # 绘制数值变量在各个分类变量下的kde
+        Multi_value1 = new_data.iloc[: , 1].unique()
+        Multi_value2 = new_data.iloc[: , 2].unique()
+        colors1 = sns.husl_palette(len(Multi_value1)) # 获取第二列对应这个长度的不同颜色盘
+        colors2 = sns.husl_palette(len(Multi_value2)) # 获取第三列对应这个长度的不同颜色盘
+        fig , axes = plt.subplots(1 , 2 , figsize = (10 , 5) , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+        for index , value in enumerate(Multi_value1): # 第一个分类变量对应的kde
+            sns.kdeplot(new_data[new_data.iloc[: , 1] == value].iloc[: , 0] , color = colors1[index] ,shade=True , alpha = 0.7 ,  ax = axes[0] , label = 'Kde for ' + str(value))
+        for index , value in enumerate(Multi_value2): # 第二个分类变量对应的kde
+            sns.kdeplot(new_data[new_data.iloc[: , 2] == value].iloc[: , 0] , color = colors2[index] ,shade=True , alpha = 0.7 ,  ax = axes[1] , label = 'Kde for ' + str(value))
+        for i in range(2):
+            axes[i].grid()
+            axes[i].legend()
+            axes[i].set_xlabel(col_names[i+1])
+            axes[i].set_ylabel(col_names[0])
+            axes[i].set_title('Differ kde')
+        plt.tight_layout() # 自动调整子图间距
+        if save : plt.savefig(dir_path + '/diff_kde of ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
+        
+        # 绘制两分类变量之间对的关系
+        
+        if(eq(new_class[1:] , [1 , 1])): # 如果是两个二分变量
+            fig , axes = plt.subplots(figsize = (5 , 5) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            Nesting_pie(new_data.iloc[: , [1 , 2]] , ax = axes) # 绘制嵌套饼图
+            if save : plt.savefig(dir_path + '/Pie ' + '.'.join(col_names[1:]) + '.png' , dpi = dpi)
+            if show : plt.show()
+        elif(eq(new_class[1:] , [1 , 2])): # 如果为一个二分一个多分
+            fig , axes = plt.subplots(1,  2 , figsize = (10 , 5) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            Nesting_pie(new_data.iloc[: , [1 , 2]] , ax = axes[0]) # 绘制嵌套饼图 内环为2分变量
+            Nesting_pie(new_data.iloc[: , [2 , 1]] , ax = axes[1]) # 绘制嵌套图 内环为多分变量
+            axes[0].set_xlabel('Inner is '+ col_names[1])
+            axes[1].set_xlabel('Inner is '+ col_names[2])
+            plt.tight_layout() # 自动调整子图间距
+            if save : plt.savefig(dir_path + '/Pie ' + '.'.join(col_names[1:]) + '.png' , dpi = dpi)
+            if show : plt.show()
+        else: # 如果是2个多分类变量
+            fig , axes = plt.subplots(1,  2 , figsize = (10 , 5) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            Mosaic_plt(new_data.iloc[: , [1 , 2]] , ax = axes[0]) # 绘制嵌套饼图 内环为2分变量
+            Mosaic_plt(new_data.iloc[: , [2 , 1]] , ax = axes[1]) # 绘制嵌套图 内环为多分变量
+            plt.tight_layout() # 自动调整子图间距
+            if save : plt.savefig(dir_path + '/Mosaic ' + '.'.join(col_names[1:]) + '.png' , dpi = dpi)
+            if show : plt.show()
+    
+    # 3个分类型变量        
+    
+    else : 
+        # 首先绘制各自的一维图，合并成一个大图
+        if figsize == None : figsize = (8 , 12)
+        
+        fig , axes = plt.subplots(3 , 2 , figsize = figsize , dpi = dpi)
+        fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+        
+        for i in range(3):
+            if(new_class[i] == 1):
+                Binary_autoplt(new_data.iloc[: , i] , ax1 = axes[i][0] , ax2 = axes[i][1])
+            else:
+                Multitpye_autoplt(new_data.iloc[: , i] , ax1 = axes[i][0] , ax2 = axes[i][1])
+        
+        plt.tight_layout() # 自动调整子图间距
+        if save : plt.savefig(dir_path + '/ ' + '.'.join(col_names) + '.png' , dpi = dpi)
+        if show : plt.show()
+        
+        class1 = new_class[:2] ; class2 = new_class[::2] ; class3 = new_class[1:]  # C_3^2一下，出3个子集绘图
+        col1 = col_names[:2] ; col2 = col_names[::2] ; col3 = col_names[1:]
+        class_list = [class1 , class2 , class3] ; col_list = [col1 , col2 , col3]
+        
+        
+        for unit , col in zip(class_list , col_list):
+            if eq(unit , [2 , 2]):
+                fig , axes = plt.subplots(1,  2 , figsize = (12 , 6) , dpi = dpi)
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                Mosaic_plt(new_data[col] , ax = axes[0])
+                Mosaic_plt(new_data[col[::-1]] , ax = axes[1])
+                plt.tight_layout() # 自动调整子图间距
+                if save : plt.savefig(dir_path + '/Mosaic ' + '.'.join(col) + '.png' , dpi = dpi)
+                if show : plt.show()
+                
+            else:
+                fig , axes = plt.subplots(1,  2 , figsize = (10 , 5) , dpi = dpi)
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                Nesting_pie(new_data[col] , ax = axes[0]) # 绘制嵌套饼图 内环为前一列变量
+                Nesting_pie(new_data[col[::-1]] , ax = axes[1]) # 绘制嵌套图 内环为后一列变量
+                axes[0].set_xlabel('Inner is '+ col[0])
+                axes[1].set_xlabel('Inner is '+ col[1])
+                plt.tight_layout() # 自动调整子图间距
+                if save : plt.savefig(dir_path + '/Pie ' + '.'.join(col) + '.png' , dpi = dpi)
+                if show : plt.show()
+        
+        # 绘制3个变量的3维列联表并输出为.csv文件
+        
+        temp_df = pd.DataFrame(new_data.groupby(col_names).size().reset_index()) # 生成对应的列联表对应的dataframe
+        temp_df.columns=col_names + ['val'] # 生成对应的列名
+        
+        three_dim_cross_tab = pd.pivot_table(temp_df, values= 'val', index=col_names[:2], columns=col_names[2],
+                                                aggfunc=np.sum , margins = True).fillna(0)
+        if save : three_dim_cross_tab.to_csv(dir_path + '/crosstab.csv')
+        if show : print(three_dim_cross_tab)
+        
+        
+        
+def Auto_plt(data , dataclass , filepath = None):
+    """
+    终极函数,融合了一维,二维,三维情况下的各种分支,全自动输入数据和数据类型以及要保存的文件位置，生成
 
+    Args:
+        data (dataframe): 初步清洗过后的dataframe
+        dataclass (list) : 对应data的数据类型的一个原生python list
+        filepath (str) : 要保存的文件位置,默认为None,系统自动生成
+    """
+    dpi = 100  
+    
+    new_data , new_class = data_sort(data , dataclass) # 对原data依照dataclass排序并获得排序后的data和class
+    n = len(dataclass)
+    if n == 1:
+        raise ValueError('It\'s only one dim , plot it by yourself please')
+    elif  n == 2 :
+        Two_dim_autoplt(new_data , new_class , filepath = filepath)
+    elif  n == 3 :
+        Three_dim_autoplt(new_data , new_class , filepath = filepath)
+    else:
+        
+        col_names = new_data.columns # 获取列名
+        
+        time = datetime.now() ; current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' # 记录当前的系统时间
+        if filepath == None:
+            dir_path = './descriptive_result_output/'+current_time
+        else : dir_path = filepath
+        if not os.path.exists(dir_path):  # 如果不存在该文件夹，则创建该文件夹。
+            os.makedirs(dir_path)
+        
+        if 1 in new_class : # 如果类型中存在二分类
+            numerical_class = new_class[:new_class.index(1)]
+            type_class = new_class[new_class.index(1):]
+        elif 2 in new_class : # 如果类型中不存在二分类，只存在多分类
+            numerical_class = new_class[:new_class.index(2)]
+            type_class = new_class[new_class.index(2):]
+        else:
+            numerical_class = new_class
+            type_class = []
+        num_len = len(numerical_class) ; type_len = len(type_class) # 获取数值型数据的个数以及分类型数据的个数
+
+        if num_len == 0: pass
+        elif num_len == 1:
+            fig , axes = plt.subplots(1,  2 , figsize = (8 , 4) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            Numerical_autoplt(new_data.iloc[:,0] , ax1 = axes[0] , ax2 = axes[1])
+            plt.savefig(dir_path + '/'+col_names[0]+'.png' , dpi = dpi)
+        elif num_len == 2:
+            Two_dim_autoplt(new_data[col_names[:2]] , dataclass = [0 , 0] , filepath=filepath)
+        elif num_len == 3:
+            Three_dim_autoplt(new_data[col_names[:3]] , dataclass = [0 , 0 , 0] , filepath = filepath)
+        else:
+            for i in range(num_len): # 每个维度的变量都要作图
+                fig , axes = plt.subplots(1,  2 , figsize = (8 , 4) , dpi = dpi)
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                Numerical_autoplt(new_data.iloc[: , i] , ax1 = axes[0] , ax2 = axes[1])
+                plt.savefig(dir_path + '/'+col_names[i]+'.png' , dpi = dpi)
+            if num_len <= 10: # 可以绘制矩阵散点图
+                sns.pairplot(new_data.iloc[: , :num_len] , kind='reg',diag_kind='hist' , plot_kws = {'scatter_kws' : {'alpha' : 0.6 , 's': 7},'line_kws':{'color' : (232/255, 59/255, 12/255 , 0.5) , 'linewidth' : 1}} )
+                fig = plt.gcf()
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                plt.savefig(dir_path + '/Matrix_graph' + '.png' , dpi = dpi)
+            if num_len <=30: # 可以绘制热力图
+                fig , axes = plt.subplots(figsize = (10 , 10) , dpi = dpi)
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                sns.heatmap(new_data.iloc[: , :num_len].corr() , ax = axes)
+                axes.set_title('HeatMap')
+                plt.savefig(dir_path + '/HeatMap' + '.png' , dpi = dpi)
+            
+            # 绘制卡方qq图
+            fig , axes = plt.subplots(figsize = (6 , 6) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            chi2_QQ(new_data[col_names[:num_len]] , axes = axes)
+            axes.set_title('Multi chi2 QQ plot')
+            plt.savefig(dir_path + '/Chi2 QQ' + '.png' , dpi = dpi)
+        
+        if type_len == 0 : pass
+        elif type_len == 1: 
+            fig , axes = plt.subplots(1,  2 , figsize = (8 , 4) , dpi = dpi)
+            fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+            if type_class[0] == 1:
+                Binary_autoplt(new_data.iloc[: , num_len] , ax1 = axes[0] , ax2 = axes[1])
+            else :
+                Multitpye_autoplt(new_data.iloc[: , num_len] , ax1 = axes[0] , ax2 = axes[1])
+            plt.savefig(dir_path + '/'+col_names[num_len]+'.png' , dpi = dpi)
+        elif type_len == 2:
+            Two_dim_autoplt(new_data.iloc[: , num_len:num_len+2] , dataclass = type_class , filepath = filepath)
+        elif type_len == 3:
+            Three_dim_autoplt(new_data.iloc[: , num_len:num_len+3] , dataclass = type_class , filepath = filepath)
+            
+        # 当分类型变量的数量超过4时，仅仅绘制其自身的图片，如果需要研究更多相关性，建议三维或者二维图片.
+        else:
+            for index , i in enumerate(type_class):
+                fig , axes = plt.subplots(1,  2 , figsize = (8 , 4) , dpi = dpi)
+                fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
+                if i == 1:
+                    Binary_autoplt(new_data.iloc[: , num_len + index] , ax1 = axes[0] , ax2 = axes[1])
+                else :
+                    Multitpye_autoplt(new_data.iloc[: , num_len + index] , ax1 = axes[0] , ax2 = axes[1])
+                plt.savefig(dir_path + '/'+col_names[num_len + index]+'.png' , dpi = dpi)
+                
 
 
 if __name__ == '__main__':
@@ -550,6 +820,6 @@ if __name__ == '__main__':
     # Numerical_autoplt(pre_data['MATH'] , ax1 = axes[0] , ax2 = axes[1])
     # Multitpye_autoplt(df3['region'] , ax1 = axes[0] , ax2 = axes[1])
     
-    Three_dim_autoplt(pre_data[['MATH' , 'PV1READ' , 'PV2READ']] , dataclass = [0 , 0 , 0])
+    Auto_plt(df3[['livingroom' , 'bathroom' , 'bedroom']] , [1 , 1 , 2])
     
     
