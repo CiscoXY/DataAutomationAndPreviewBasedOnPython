@@ -92,11 +92,11 @@ def data_sort(data , dataclass):
     return 整理后的新data , 整理后的新data对应的dataclass
     """
     columns = data.columns # 获取列名
-    temp = np.array([dataclass , columns])
-    sorted_index = temp[0,:].argsort() # 按升序排列dataclass，并获得排序后对应的原索引
-    temp = temp[:,sorted_index]
+    sorted_index = list(np.argsort(dataclass)) # 按升序排列dataclass，并获得排序后对应的原索引
+    order_columns = [columns[i] for i in sorted_index]
+    order_dataclass = [dataclass[i] for i in sorted_index]
     
-    return data[temp[1]] , list(temp[0])
+    return data[order_columns] , order_dataclass
     
 
 
@@ -331,7 +331,8 @@ def Two_dim_autoplt(data , dataclass , filepath = None , save = True , show = Fa
     elif(eq(new_class , [0 , 1])):
         if figsize == None : figsize = (8 , 12)
 
-        fig , axes = plt.subplots(3 , 2 , figsize = figsize , dpi = dpi)
+        fig , axes = plt.subplots(3 , 2 , figsize = figsize , dpi
+                                = dpi)
         fig.patch.set_facecolor("white") #* 设置背景 以免保存的图片背景虚化
         
         Numerical_autoplt(new_data.iloc[: , 0] , ax1 = axes[0][0] , ax2 = axes[0][1]) # 数值型的两个图
