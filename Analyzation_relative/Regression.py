@@ -587,6 +587,9 @@ def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1
     return ret
     
 
+#   # TODO 多线程   明天写  claude牛逼！
+
+
     
     
     
