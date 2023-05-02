@@ -441,6 +441,8 @@ def Outlier_TreatAndPlot(data , dataclass = None , plot = True , filepath = None
 
 
 
+
+
 if __name__ == '__main__':
     # df = pd.read_csv('data/wine/winequality-white-nan.csv' , index_col=0)
     # df_withNan , df_pro = Nan_process(df , plot = False , numeric = 'delete')

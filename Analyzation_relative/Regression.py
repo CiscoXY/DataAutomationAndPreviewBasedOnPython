@@ -15,6 +15,7 @@ from  statsmodels.api import ProbPlot
 from scipy.stats import spearmanr
 
 from Analyzation_relative.Statistical_inference import Normality_test
+from Analyzation_relative.Descriptive_statistics import DataLabeling , data_sort
 
 from statsmodels.stats.diagnostic import het_goldfeldquandt , het_breuschpagan , het_white , acorr_ljungbox
 from statsmodels.stats.outliers_influence import reset_ramsey , variance_inflation_factor
@@ -81,6 +82,160 @@ def random_subset(labels , k = 3):
     
     return subset, remaining
 
+def data_constructor(data , dataclass = None , target_type = 'linear' , degree = 2):
+    """
+    依照目标类型构建新数据框 , 可供选择的有
+    线性模型 -> 原数据框不动
+    带虚拟变量交互的线性模型 -> 使用数值型变量和二分类型变量构造交互项(不含有多分类变量的交互项,如果需要的话可以手动构造)
+    多项式模型 -> 额外构造数值型变量的幂次项 , 默认为3次 
+    带虚拟变量交互的多项式模型 -> 在构造完成多项式模型后,对每个数值型项额外进行虚拟变量交互项的引入.
+    
+    上述四个模型分别对应 : ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial']
+    
+    其中,当选定为linear时 , 并不会添加新的行 , 但是对于原始data中非数值型的分类型变量 , 会做分类型变量的数值化处理 (比方说一个变量有3个类 , A B C , 那么就会替换成 0 , 1 , 2)
+    很明显 , 除了2分类型变量会被替换成0 , 1   多分类变量替换后会明显出现数值型的倾向, 所以会严重影响模型效果 , 故而!!!!
+    
+    # * 由于多分类型变量的特殊性 , 建议用户自行处理
+    
+    # * 注意 , 多项式方法会造成维数爆炸 , 带虚拟变量交互的多项式模型更会造成维数爆炸, 例如: 原始数据为2个数值型变量1个二分类型变量 , 那么此时的新数据阵就是2+1+2+(2+2)*1 = 9维
+    # * 如果是更高维数的初始阵例如 : 3个数值型变量2个二分类型变量 , 那么新数据阵是 3+2+3+(3+3)*2 = 20维
+    
+    Args:
+        data (dataframe): 需要构建的原始dataframe
+        dataclass (list, optional): 输入dataframe对应每行的数据类型。如果为None则会自动识别. Defaults to None.
+        target_type (str, optional): 目标的形式 可选系数 : ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial']. Defaults to linear.
+        degree(int , optional): 幂次项的最高系数. Defaults to 2
+    Returns:
+        df_augmented: 添加交互项或者幂次项的dataframe
+    """
+    df_augmented = data.copy()
+    
+    # 获取排序后的dataframe和数据分类
+    
+    if dataclass == None:# 如果没有传入dataclass , 则进行自动判断
+        new_class = DataLabeling(data) 
+    else:
+        if len(data.columns) != len(dataclass):
+            raise ValueError('The length of columns and dataclass are not the same, please check')
+        new_class = dataclass
+    df_augmented , new_class = data_sort(df_augmented , dataclass = new_class) # 进行排序
+    
+    # 获取各种类型变量的列名
+    col_names = df_augmented.columns.to_list()
+    if 1 in new_class: # 如果有二分类变量
+        num_columns = col_names[:new_class.index(1)]
+        
+        if 2 in new_class: # 如果还有多分类型变量
+            binary_columns = col_names[new_class.index(1) : new_class.index(2)]
+            multitype_columns = col_names[new_class.index(2) : ]
+            
+        else:
+            binary_columns = col_names[new_class.index(1) : ]
+            multitype_columns = []
+        
+    elif 2 in new_class: # 如果没有二分类型变量，但是有多分类型变量
+        num_columns = col_names[:new_class.index(2)]
+        binary_columns = []
+        multitype_columns = col_names[new_class.index(2) : ]
+    else: #如果全是数值型变量
+        num_columns = col_names
+        binary_columns = []
+        multitype_columns = []
+    
+    
+    # 对分类型变量做映射
+    
+    for col in (binary_columns + multitype_columns):
+        if isinstance(df_augmented[col].dtype, pd.CategoricalDtype):# 如果本身已经是category了，那么不做处理
+            pass
+        else :
+            df_augmented[col] = df_augmented[col].astype('category') # 转换为category
+            df_augmented[col] = df_augmented[col].cat.codes # 变换标签
+    
+    # 如果是线性模型
+    if target_type == 'linear':
+        # 此时原封不动返还数据即可
+        return df_augmented
+
+    # 如果是带虚拟变量交互的模型
+    elif target_type == 'dummy and linear':
+        # 先查验是否有2分类型变量
+        if len(binary_columns) == 0:
+            raise ValueError('There isn\'t any binary variable , please check')
+        
+        # 如果有2分类型变量
+        else:
+            # 如果没有数值型变量M , 自然不含交互项
+            if len(num_columns) == 0:
+                raise ValueError('There isn\'t any numeric variable , please check')
+            
+            # 如果含有数值项,则构造数值项和二分类变量的交互项
+            else:
+                for bina_col in binary_columns:
+                    # 每个二分类变量都与剩下的数值项交互
+                    for num_col in num_columns:
+                        add_col_name = f'{num_col}@{bina_col}'
+                        add_col = df_augmented[num_col] * df_augmented[bina_col]
+                        add_col.name = add_col_name
+                        df_augmented = pd.concat([df_augmented, add_col], axis=1)
+        
+        # 返回添加了虚拟变量交互项的data
+        return df_augmented
+        
+    elif target_type == 'polynomial' or target_type == 'dummy and polynomial':
+        # 先检查是否有数值型变量
+        if len(num_columns) == 0:
+            raise ValueError('There isn\'t any numeric variable , please check')
+        
+        # 如果已经存在数值型变量了
+        else:
+            # 检查输入参数是否合规
+            if degree<=1:
+                raise ValueError('degree must >= 2')
+            
+            # 检查是否有数值型变量
+            if len(num_columns) == 0:
+                raise ValueError('There isn\'t any numeric variable , please check') 
+            
+            else:
+                add_col_list = []
+                
+                for col in num_columns: # 对每个数值型变量都要进行augment
+                    for i in range(2 , degree+1):
+                        add_col_name = f'{col}^{i}'
+                        add_col_list.append(add_col_name) # 增加列名
+                        add_col = df_augmented[col] ** i
+                        add_col.name = add_col_name
+                        df_augmented = pd.concat([df_augmented, add_col], axis=1)
+                
+                num_columns.extend(add_col_list) # 将增加的列名加到数值型当中
+        
+        # 如果是多项式则不需要操作
+        if target_type == 'polynomial':
+            pass
+        
+        # 如果是带虚拟变量交互项的多项式
+        else:
+            # 如果没有二分类型变量
+            if len(binary_columns) == 0:
+                raise ValueError('There isn\'t any binary variable , please check')
+            
+            # 如果有二分类型变量
+            else:
+                for bina_col in binary_columns:
+                    # 每个二分类变量都与剩下的数值项交互
+                    for num_col in num_columns:
+                        add_col_name = f'{num_col}@{bina_col}'
+                        add_col = df_augmented[num_col] * df_augmented[bina_col]
+                        add_col.name = add_col_name
+                        df_augmented = pd.concat([df_augmented, add_col], axis=1)
+        
+        # 返回添加了高次项和虚拟变量交互项的data
+        return df_augmented
+    else : 
+        raise ValueError('You must input correct target_type')
+
+
 ### 各种Test相关
 
 
@@ -132,6 +287,7 @@ def res_test(Residual , X , significance_value = 0.05 , higher_term = True , lab
         Labels = X.columns[1:]
     else:
         Labels = labels
+    
     # spearman秩相关test
     res_abs = np.abs(Residual)
     spearman_df = pd.DataFrame(data=None,columns=['corr','p-value']) # 创建空表
@@ -151,10 +307,12 @@ def res_test(Residual , X , significance_value = 0.05 , higher_term = True , lab
     
     # 接下来是基于回归的异方差检验
     Reg_relative_df =  pd.DataFrame(data=None,columns=['statistic','p-value']) # 创建空表
+    
     # Breusch-Pagan 检验
     [lm , lm_pvalue , F , F_pvalue] = het_breuschpagan(Residual , X[Labels])
     Reg_relative_df.loc['BP_LM'] = [lm , lm_pvalue]
     Reg_relative_df.loc['BP_F'] = [F , F_pvalue]
+    
     # White 检验
     judge = False
     for col in Labels:
@@ -256,14 +414,15 @@ def Multicollinearity_test(data):
     
     return Mul_df
 
-#### 逐步回归(可以基于AIC，BIC，)
+#### 逐步回归(考虑到各种异常情况的)
     # 注： 以下的逐步回归会优先考虑模型的假定问题，正态性，异方差性，自相关性以及内生性假定问题，随后才是参数的显著性问题。
-def Stepwise_reg(data ,summary_output = True ,  significance_level = 0.05 , higher_term = True):
+def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_level = 0.05 , higher_term = True):
     """
     该函数主要对数据data进行逐步回归选择,优先考虑模型的各种异常情况，
     
     data : 数据阵,默认第一列是被解释变量
-    summary_output : 是否将筛选的模型的summary以txt文件格式输出,默认为True,输出文件的目录为调用该模块的main.py函数的同一目录下的'result_output'文件夹内
+    filepath(str , optional) : 保存文件的路径(最后会加上时间) . Default to None
+    summary_output : 是否将筛选的模型的summary以txt文件格式输出,默认为True,输出文件的目录为调用该模块的main.py函数的同一目录下的'result_output'文件夹内 . Default = True
     significance_level : 判断是否通过检验的显著性水平
     higher_term : 数据是否含有高维项,如果有则在检验时会忽略white检验和内生性检验
     
@@ -281,8 +440,11 @@ def Stepwise_reg(data ,summary_output = True ,  significance_level = 0.05 , high
     
     current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' # 记录当前的系统时间
     
-    dir_path = './reg_result_output/'+current_time
-    
+    if filepath == None:
+        dir_path = './reg_result_output/'+current_time
+    else:
+        dir_path = filepath + '/' + current_time
+
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     # 初始化空表
@@ -423,6 +585,10 @@ def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1
         ax.set_title('岭迹分析图')
         ax.legend()
     return ret
+    
+
+    
+    
     
 if __name__=="__main__":
     df1 = pd.read_csv("data/select_data.csv",encoding = "utf-8")
