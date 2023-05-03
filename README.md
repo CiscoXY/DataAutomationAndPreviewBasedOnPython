@@ -28,3 +28,9 @@ Just as the name says.
 5.2更新：
 data_constructor部分完成
 下个任务是添加多线程
+
+5.3更新:
+Automatic_reg已经接近尾声，整体项目进度95%
+明天最后完善一下Automatic_reg 并且通过了测试之后，就可以进行综合性的测试了，基本可以宣布整体项目的完成
+
+小开香槟 

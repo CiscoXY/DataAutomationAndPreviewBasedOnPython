@@ -3,6 +3,10 @@ sys.path.append('./')
 from datetime import datetime
 import os
 
+import warnings
+
+from multiprocessing import Pool # 多线程
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -318,8 +322,8 @@ def res_test(Residual , X , significance_value = 0.05 , higher_term = True , lab
     for col in Labels:
         # 获取该列的唯一值
         unique_values = X[col].unique()
-        # 如果该列的唯一值只有两个，并且都是0或1，说明该列是二元的
-        if len(unique_values) == 2 and all(x in [0, 1] for x in unique_values):
+        # 如果该列的唯一值只有两个，并且其中一个，则无法进行white检验，因为会出现严格多重共线性
+        if len(unique_values) == 2 and any(x == 0 for x in unique_values):
             judge = True
     if((not judge) and len(Labels)<= 50 and (not higher_term)): # 如果不是二元且均为0和1且数据中不含有高次项，则可以进行white检验
         [lm , lm_pvalue , F , F_pvalue] = het_white(Residual , X[Labels])
@@ -433,7 +437,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_l
                         第8列存储着该formula对应的各种参数的t检验p值
                         第9列是该formula的调整的R方
                         第10列是F统计量的p值
-                        第11列是formula,也就是对应的方程表达式,一船string
+                        第11列是formula,也就是对应的方程表达式,一串string
     """
     # 获得系统时间
     time = datetime.now()
@@ -456,7 +460,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_l
     # 初始随机选取3个label
     explained_vari = data.columns[0] # 获取被解释变量的label
     Labels = data.columns[1:].tolist() # 获取解释变量的labels
-    for i in range(int(len(Labels) * 0.6)): # 进行极限30次的选取，如果30次都没有选择到不存在异方差和自相关的初始化label
+    for i in range(int(len(Labels) * 0.6) + 1): # 进行最多变量数*0.6的选取，如果都没有选择到不存在异方差和自相关的初始化label
         init_labels , left_labels = random_subset(Labels , k = 3)
         formula = Formula_encoder([explained_vari] + init_labels)
         print('init_formula is '+ formula)
@@ -588,6 +592,161 @@ def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1
     
 
 #   # TODO 多线程   明天写  claude牛逼！
+# 多线程模块描述：
+# 输入原始data ，输入想要自动判断的模式，传递参数为一个list，list当中存储着想要全自动回归的模型类别。 随后再特定文件路径内输出全自动回归的判断过程和结果，所用函数为 Stepwise_reg
+
+# 可供选择的模型类别为 : ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial'] 分别对应 线性模型 ， 带虚拟变量交互项的线性模型 ， 多项式 ， 带虚拟变量交互的多项式
+
+
+
+
+def Automatic_reg(data , dataclass = None , target_col = None , mode = None , filepath = None):
+    """ 多线程模块
+    针对data进行全自动回归 . 并在指定文件夹内输出结果 . 文件路径如果不指定则默认为 './Automatic_reg.result'
+    
+    当mode不为None或长度不为1时 , 会调用多线程
+
+    Args:
+        data (dataframe): 输入的原始数据(默认为不存在缺失值的数据 , 如果存在则会返回valueerror)
+        
+        dataclass (list, optional): 存储着data每列的数据类型 , 0为数值型 , 1为二分类型 , 2为多分类型; 如果为None , 则会自行判断. Defaults to None.
+        
+        target_col (str, optional): 被解释变量的列名 ; 如果为None则默认第一列为被解释变量. Defaults to None.
+        
+        mode (list, optional): 存储着想要回归的目标模型的类别 , 应当为list , 可选参数 : ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial'] 
+        当为None时会默认全部并且自动进行删减判断.  当参数长度不为1时 , 会调用多线程进行处理. Defaults to None.
+        
+        filepath (str, optional): 想要保存的文件的路径 , 结果会在这个文件路径内部开辟子文件夹 , 名称为所探究的模型类型,  并依照执行时间进行自动判断. Defaults to None.
+        
+    """
+    # 对data进行格式和维数审查 , 如果不符合则valueerror
+    if not isinstance(data , pd.DataFrame):
+        raise ValueError('data must be a dataframe')
+    else:
+        if data.shape[1] < 2:
+            raise ValueError('data\'s dimensions must >= 2')
+        elif data.shape[0] <= data.shape[1]:
+            raise ValueError('data has dimension explosion , please check')
+        # 此时data是数据框且至少2列且不存在维数爆炸
+    
+    # 获取数据类型
+    if dataclass == None:# 如果没有传入dataclass , 则进行自动判断
+        new_class = DataLabeling(data) 
+    else:
+        if not isinstance(dataclass , list):
+            raise ValueError('The dataclass must be a list')
+        if len(data.columns) != len(dataclass):
+            raise ValueError('The length of columns and dataclass are not the same, please check')
+        if not all(elem in [0, 1, 2] for elem in dataclass):
+            raise ValueError('The dataclass must only include 0 , 1 , 2 , please check')
+        new_class = dataclass
+    
+    
+    # 调整数据顺序，使得被解释变量变为第一列
+    col_names = data.columns.to_list() # 获取列名转换为list
+    if target_col == None:
+        df = data.copy()
+        pass # 如果默认，则认为数据第一列是
+    else:
+        if target_col in col_names:
+            new_class.insert(0, new_class.pop(col_names.index(target_col))) # 将target_col对应的dataclass的元素放到第一位
+            col_names.remove(target_col)
+            col_names.insert(0 , target_col)
+            df = data[col_names] # 完成了被解释变量列换到第一列的任务
+        else:
+            raise ValueError(f'{target_col} is not in data , please check')
+    
+    #*  至此已经完成了数据、数据类型的诊断和整理
+    
+    data_y , data_X = df.iloc[: , 0] , df.iloc[: , 1:] # 被解释变量和解释变量阵的分割，方便之后做变换
+    class_y , class_X = [new_class[0]] , new_class[1:] # 获得被解释变量和解释变量的类别
+    
+    # 判断mode格式
+    if mode == None :
+        mode = ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial']
+    else:
+        if not isinstance(mode , list):
+            raise ValueError('The mode must be a list')
+        if len(mode) == 0:
+            raise ValueError('mode can\'t be Null list')
+        if not all(elem in ['linear' , 'dummy and linear' , 'polynomial' , 'dummy and polynomial'] for elem in mode):
+            raise ValueError('The dataclass must only include \'linear\',\'dummy and linear\',\'polynomial\',\'dummy and polynomial\', please check')
+        mode = list(set(mode)) # 只去唯一值，防止长度过多浪费时间
+    
+    # 判断mode当中的模式是否可用，不可用则抛出
+    X_list = [] ; mode_copy = list(mode) # 拷贝一份
+    for mode_type in mode:
+        if mode_type == 'linear':
+            X_list.append(data_constructor(data_X , dataclass = class_X)) # 如果为线性，则直接将结构化的解释变量加入解释变量list
+        elif mode_type == 'dummy and linear' or mode_type =='dummy and polynomial':
+            if not (1 in class_X):
+                warnings.warn(f'There is no binary variable in X , ignored this mode : {mode_type}')
+                mode_copy.remove(mode_type)
+            elif not (0 in class_X):
+                warnings.warn(f'There is no numeric variable in X , ignored this mode : {mode_type}')
+                mode_copy.remove(mode_type)
+            else:
+                X_list.append(data_constructor(data_X , dataclass = class_X , target_type=mode_type))
+        
+        elif mode_type == 'polynomial':
+            if not (0 in class_X):
+                warnings.warn(f'There is no numeric variable in X , ignored this mode : {mode_type}')
+                mode_copy.remove(mode_type)
+            else:
+                X_list.append(data_constructor(data_X , dataclass = class_X , target_type=mode_type))
+
+    mode = mode_copy
+    
+    # 获取时间
+    time = datetime.now()
+    # 记录当前的系统时间
+    current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' 
+    
+    if len(mode) == 0:
+        raise ValueError('Function can\'t word under the parameter of \'mode\' you give. \n Please check it again')
+    
+    if filepath == None:
+        dir_path = './Automatic_reg.result '+current_time
+    else:
+        dir_path = filepath + '/Automatic_reg.result ' + current_time
+
+    # 根据mode创建对应的文件路径
+    dir_list = []
+    for mode_type in mode:
+        sub_dir = dir_path + '/' + mode_type # 创建名为 Automatic_reg.result current_time/mode_type 的子文件夹
+        dir_list.append(sub_dir)             # 此处完成了添加对应的文件路径到文件路径列表   以便后续的多线程进行.
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
+    
+    # 根据mode设置各种stepwise_reg的关键字参数
+    args_list = []
+    for index , mode_type in enumerate(mode):
+        args = [pd.concat([data_y, X_list[index]], axis=1) , dir_list[index] , True , 0.05]
+        if mode_type == 'linear' :
+            if 1 in class_X:
+                indices = [i for i, x in enumerate(class_X) if x == 1]  # 如果线性模型的解释变量当中存在二分变量，那么就针对这些二分变量讨论
+                for i in indices:
+                    unique_values = X_list[index].iloc[: , i].unique()  # 获得这个二分变量列的唯一值
+                    # 如果该列的唯一值只有两个，并且其中一个还是0，则无法进行white和RESET检验，因为引入高阶项之后会出现严格多重共线性
+                    if len(unique_values) == 2 and any(x == 0 for x in unique_values):
+                        args.append(True)  # 此时设置 higher_term = True 即模型中包含高阶参数，实际上不包含，只是为了不去做相关检验罢了
+                        break
+                
+                if len(args) == 4 : args.append(False)  # 如果args这个参数列表只有四个参数，说明前面的检验都通过了，可以引入高阶项进行检验
+            else:
+                args.append(False)# 如果为线性模型，则不包含高阶项，所以需要进行white和内生性检验
+
+        else : 
+            # 其他情况的模型，即'dummy and linear' , 'polynomial' , 'dummy and polynomial',这些情况下都包含了高阶项，所以higher_term = True
+            args.append(True)
+    
+    # TODO
+    
+    
+    
+    return mode , X_list , 
+    
+
 
 
     
