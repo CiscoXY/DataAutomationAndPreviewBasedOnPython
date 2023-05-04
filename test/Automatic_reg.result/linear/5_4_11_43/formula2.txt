@@ -1,0 +1,26 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                    评价数   R-squared:                       0.006
+Model:                            OLS   Adj. R-squared:                 -0.004
+Method:                 Least Squares   F-statistic:                    0.6059
+Date:                Thu, 04 May 2023   Prob (F-statistic):              0.547
+Time:                        11:43:08   Log-Likelihood:                -1689.0
+No. Observations:                 197   AIC:                             3384.
+Df Residuals:                     194   BIC:                             3394.
+Df Model:                           2                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept    322.4861    433.834      0.743      0.458    -533.151    1178.124
+城市          -102.0879    207.540     -0.492      0.623    -511.412     307.236
+评分            26.1943     27.328      0.959      0.339     -27.703      80.092
+==============================================================================
+Omnibus:                      199.408   Durbin-Watson:                   1.499
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             4082.636
+Skew:                           4.042   Prob(JB):                         0.00
+Kurtosis:                      23.785   Cond. No.                         70.8
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.

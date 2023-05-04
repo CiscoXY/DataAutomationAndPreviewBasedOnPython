@@ -420,13 +420,14 @@ def Multicollinearity_test(data):
 
 #### 逐步回归(考虑到各种异常情况的)
     # 注： 以下的逐步回归会优先考虑模型的假定问题，正态性，异方差性，自相关性以及内生性假定问题，随后才是参数的显著性问题。
-def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_level = 0.05 , higher_term = True):
+def Stepwise_reg(data ,filepath = None , summary_output = True , result_output = True ,  significance_level = 0.05 , higher_term = True):
     """
     该函数主要对数据data进行逐步回归选择,优先考虑模型的各种异常情况，
     
     data : 数据阵,默认第一列是被解释变量
     filepath(str , optional) : 保存文件的路径(最后会加上时间) . Default to None
     summary_output : 是否将筛选的模型的summary以txt文件格式输出,默认为True,输出文件的目录为调用该模块的main.py函数的同一目录下的'result_output'文件夹内 . Default = True
+    result_output : 是否将每步筛选的到的dataframe输出. Default = True
     significance_level : 判断是否通过检验的显著性水平
     higher_term : 数据是否含有高维项,如果有则在检验时会忽略white检验和内生性检验
     
@@ -499,6 +500,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_l
             coef_pvalues = model.pvalues[1:] # 获取解释变量回归系数的p值
         
             if(np.all(coef_pvalues < significance_level)): # 如果模型直接全部参数显著，则放弃迭代直接出结果
+                if result_output: stepwise_df.to_excel(dir_path + '/result.xlsx' , encoding='utf-8')
                 return stepwise_df
 
             else: # 如果存在不显著的变量，那么就随机剔除一个，再进行一次后退法。
@@ -513,6 +515,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_l
                 Labels.remove(Labels[random_index]) 
                 
                 if(len(Labels) == 0):
+                    if result_output: stepwise_df.to_excel(dir_path + '/result.xlsx' , encoding='utf-8')
                     return stepwise_df # 此时说明怎么样都不显著，退无可退了
             
     else :  # 如果初始化不为空，则意味着此时已经完成了初始化变量的筛选
@@ -551,6 +554,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True ,  significance_l
                         with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w') as f:
                             f.write(model.summary().as_text())   # 向目标文件夹内的文件输出对应的summary并形成单独文件
                             
+            if result_output: stepwise_df.to_excel(dir_path + '/result.xlsx' , encoding='utf-8')
             return stepwise_df # while循环后结束，并返回对应的结果
 
 
@@ -659,7 +663,7 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
     #*  至此已经完成了数据、数据类型的诊断和整理
     
     data_y , data_X = df.iloc[: , 0] , df.iloc[: , 1:] # 被解释变量和解释变量阵的分割，方便之后做变换
-    class_y , class_X = [new_class[0]] , new_class[1:] # 获得被解释变量和解释变量的类别
+    class_y , class_X = [new_class[0]] , new_class[1:] # 获得被解释变量和解释变量的类别 同时对被解释变量的类别进行排序 因为之后要的是顺序
     
     # 判断mode格式
     if mode == None :
@@ -695,20 +699,19 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
             else:
                 X_list.append(data_constructor(data_X , dataclass = class_X , target_type=mode_type))
 
+
+    class_X = sorted(class_X) # 升序排序一下，这样才能一一对应X_list当中的头几个原始数据
     mode = mode_copy
-    
-    # 获取时间
-    time = datetime.now()
-    # 记录当前的系统时间
-    current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' 
     
     if len(mode) == 0:
         raise ValueError('Function can\'t word under the parameter of \'mode\' you give. \n Please check it again')
     
+    # 创建各种文件路径
+    
     if filepath == None:
-        dir_path = './Automatic_reg.result '+current_time
+        dir_path = './Automatic_reg.result'
     else:
-        dir_path = filepath + '/Automatic_reg.result ' + current_time
+        dir_path = filepath + '/Automatic_reg.result'
 
     # 根据mode创建对应的文件路径
     dir_list = []
@@ -718,33 +721,47 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
         if not os.path.exists(sub_dir):
             os.makedirs(sub_dir)
     
-    # 根据mode设置各种stepwise_reg的关键字参数
+    # 根据mode设置各种stepwise_reg的关键字参数 , 并构建args_list
     args_list = []
     for index , mode_type in enumerate(mode):
-        args = [pd.concat([data_y, X_list[index]], axis=1) , dir_list[index] , True , 0.05]
+        args = [pd.concat([data_y, X_list[index]], axis=1) , dir_list[index] , True ,True ,  0.05]
         if mode_type == 'linear' :
             if 1 in class_X:
                 indices = [i for i, x in enumerate(class_X) if x == 1]  # 如果线性模型的解释变量当中存在二分变量，那么就针对这些二分变量讨论
                 for i in indices:
-                    unique_values = X_list[index].iloc[: , i].unique()  # 获得这个二分变量列的唯一值
+                    unique_values = X_list[index].iloc[: , i].unique()  # 获得这个二分变量列的唯一值  之所以为2+1
                     # 如果该列的唯一值只有两个，并且其中一个还是0，则无法进行white和RESET检验，因为引入高阶项之后会出现严格多重共线性
                     if len(unique_values) == 2 and any(x == 0 for x in unique_values):
+                        
                         args.append(True)  # 此时设置 higher_term = True 即模型中包含高阶参数，实际上不包含，只是为了不去做相关检验罢了
                         break
                 
-                if len(args) == 4 : args.append(False)  # 如果args这个参数列表只有四个参数，说明前面的检验都通过了，可以引入高阶项进行检验
+                if args[-1] == 0.05 : args.append(False)  # 如果args这个参数列表只有四个参数，说明前面的检验都通过了，可以引入高阶项进行检验
             else:
                 args.append(False)# 如果为线性模型，则不包含高阶项，所以需要进行white和内生性检验
 
         else : 
             # 其他情况的模型，即'dummy and linear' , 'polynomial' , 'dummy and polynomial',这些情况下都包含了高阶项，所以higher_term = True
             args.append(True)
+        args_list.append(args)
     
+    # 完成了全部构建 , 开始主程序部分
+    stepwise_resultdf_list = []
+    if len(args_list) == 1: # 如果参数list只有一个，说明只需要进行一次Stepwise_reg , 故而此时不需要多线程
+        stepwise_resultdf = Stepwise_reg(args_list[0][0] , filepath = args_list[0][1] , summary_output = args_list[0][2] , result_output = args_list[0][3] ,  significance_level = args_list[0][4] , higher_term = args_list[0][5])
+        stepwise_resultdf_list.append(stepwise_resultdf)
+    
+    else:
     # TODO
+        with Pool(len(args_list)) as p:  # 使用 4 个进程
+            results = p.starmap(Stepwise_reg, args_list)
     
     
     
-    return mode , X_list , 
+    
+    
+    
+    return mode , X_list , args_list , stepwise_resultdf_list
     
 
 
