@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 
 import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from multiprocessing import Pool # 多线程
 
@@ -14,7 +15,7 @@ import pandas as pd
 import itertools   #* 用于进行解释变量名称的遍历。
 import random
 
-import statsmodels.formula.api as smf
+import statsmodels.api as sm
 from  statsmodels.api import ProbPlot
 from scipy.stats import spearmanr
 
@@ -35,17 +36,6 @@ params = {'legend.fontsize': 7,}
 
 plt.rcParams.update(params)
 # 小工具
-
-def Formula_create(Label_list):
-    """创建自变量和因变量的所有可能组合的公式 , 其中Label_list的第一个元素默认为被解释变量"""
-    assert len(Label_list) >= 2, "The length of Label isn't enough"
-    Variable_list = Label_list[1:] 
-    result = []
-    for n in range(1, len(Variable_list) + 1): 
-        for c in itertools.combinations(Variable_list, n):
-            s = "+".join(c)
-            result.append("~".join([Label_list[0],s]))  
-    return result
 
 def Formula_encoder(Label_list):
     """
@@ -178,7 +168,7 @@ def data_constructor(data , dataclass = None , target_type = 'linear' , degree =
                 for bina_col in binary_columns:
                     # 每个二分类变量都与剩下的数值项交互
                     for num_col in num_columns:
-                        add_col_name = f'{num_col}@{bina_col}'
+                        add_col_name = f'{num_col}*{bina_col}'
                         add_col = df_augmented[num_col] * df_augmented[bina_col]
                         add_col.name = add_col_name
                         df_augmented = pd.concat([df_augmented, add_col], axis=1)
@@ -229,7 +219,7 @@ def data_constructor(data , dataclass = None , target_type = 'linear' , degree =
                 for bina_col in binary_columns:
                     # 每个二分类变量都与剩下的数值项交互
                     for num_col in num_columns:
-                        add_col_name = f'{num_col}@{bina_col}'
+                        add_col_name = f'{num_col}*{bina_col}'
                         add_col = df_augmented[num_col] * df_augmented[bina_col]
                         add_col.name = add_col_name
                         df_augmented = pd.concat([df_augmented, add_col], axis=1)
@@ -388,11 +378,13 @@ def Model_exception_test(res , data , model , significance_level = 0.05 , higher
     
     
 # 多重共线性test,
-def Multicollinearity_test(data):
+def Multicollinearity_test(data , VIF = True):
     """
     用于检验多重共线性,data应当全是解释变量组成的dataframe或者np.array
     返回的dataframe由两部分组成
     方差扩大因子法和特征值（条件指数法）`
+    
+    VIF (bool , optional) : 是否使用方差扩大因子法求解 , 如果为False则只用条件指数
     """
     Mul_df = pd.DataFrame()
     
@@ -402,9 +394,6 @@ def Multicollinearity_test(data):
     else: 
         X = data
         Columns = [f'x{i+1}' for i in range(X.shape[1])]
-        
-    # 方差扩大因子法
-    vif = [variance_inflation_factor(X, i) for i in range(X.shape[1])]
     
     # 条件指数
     XTX = X.T @ X 
@@ -412,9 +401,16 @@ def Multicollinearity_test(data):
     max_eig = np.max(eigenvalues)  
     min_eig = np.min(eigenvalues)
     con_index = np.sqrt(max_eig/min_eig)
+    # 方差扩大因子法
+    if VIF:
+        vif = [variance_inflation_factor(X, i) for i in range(X.shape[1])]
+        index = [f'{col}_VIF' for col in Columns] + ['条件指数']
+        Mul_df = pd.DataFrame({'value': vif + [con_index]}, index=index)
+    else:
+        Mul_df = pd.DataFrame({'value' : [con_index]} , index = ['条件指数'])
     
-    index = [f'{col}_VIF' for col in Columns] + ['条件指数']
-    Mul_df = pd.DataFrame({'value': vif + [con_index]}, index=index)
+    
+    
     
     return Mul_df
 
@@ -461,11 +457,11 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
     # 初始随机选取3个label
     explained_vari = data.columns[0] # 获取被解释变量的label
     Labels = data.columns[1:].tolist() # 获取解释变量的labels
-    for i in range(int(len(Labels) * 0.6) + 1): # 进行最多变量数*0.6的选取，如果都没有选择到不存在异方差和自相关的初始化label
-        init_labels , left_labels = random_subset(Labels , k = 3)
+    for i in range(int(len(Labels) * 0.75) + 1): # 进行最多变量数*0.75的选取，如果都没有选择到不存在异方差和自相关的初始化label
+        init_labels , left_labels = random_subset(Labels , k = 2)
         formula = Formula_encoder([explained_vari] + init_labels)
         print('init_formula is '+ formula)
-        model = smf.ols(formula , data = data).fit()
+        model = sm.OLS(data[explained_vari] , sm.add_constant(data[init_labels])).fit()
         Bool_value , Bool_list , spearman_labels , GQ_labels = Model_exception_test(model.resid , data , model ,labels = init_labels , higher_term = higher_term)
         if Bool_list[1] and Bool_list[2]:
             # 如果不存在 异方差和自相关 则初始化完成，像最终数据框中添加数据并跳出循环
@@ -474,8 +470,8 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
                                                         np.round(model.pvalues.to_list() , 4) , round(model.rsquared_adj , 4) , round(model.f_pvalue , 5) , formula]] , columns = stepwise_columns) , 
                                                 ignore_index=True)
             if summary_output: # 如果需要输出则输出
-                with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w') as f:
-                    f.write(model.summary().as_text())   # 向目标文件夹内的文件输出对应的summary并形成单独文件
+                with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w', encoding='utf-8') as f:
+                    f.write(model.summary().as_text() , )   # 向目标文件夹内的文件输出对应的summary并形成单独文件
             
             break
         else:
@@ -486,7 +482,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
         while True: #开始后退法的循环
         
             formula = Formula_encoder([explained_vari] + Labels) # 依照Labels模型的方程式
-            model = smf.ols(formula , data = data).fit()
+            model = sm.OLS(data[explained_vari] , sm.add_constant(data[Labels])).fit()
             Bool_value , Bool_list , spearman_labels , GQ_labels = Model_exception_test(model.resid , data , model ,labels = Labels , higher_term = higher_term)
         
             stepwise_df = stepwise_df.append(pd.DataFrame([[Bool_value , Bool_list[0] , Bool_list[1] , Bool_list[2] , Bool_list[3] , 
@@ -494,7 +490,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
                                                         np.round(model.pvalues.to_list() , 4) , round(model.rsquared_adj , 4) , round(model.f_pvalue , 5) , formula]] , columns = stepwise_columns) , 
                                                 ignore_index=True)
             if summary_output: # 如果需要输出则输出
-                with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w') as f:
+                with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w', encoding='utf-8') as f:
                     f.write(model.summary().as_text())   # 向目标文件夹内的文件输出对应的summary并形成单独文件
         
             coef_pvalues = model.pvalues[1:] # 获取解释变量回归系数的p值
@@ -531,7 +527,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
                 left_labels.remove(random_label) # 将其从left_labels当中剔除
                 
                 formula = Formula_encoder([explained_vari] + init_labels)# 依照init_labels生成方程式
-                model = smf.ols(formula , data = data).fit()
+                model = sm.OLS(data[explained_vari] , sm.add_constant(data[init_labels])).fit()
                 Bool_value , Bool_list , spearman_labels , GQ_labels = Model_exception_test(model.resid , data , model , labels = init_labels , higher_term = higher_term)
                 
                 if Bool_list[1] and Bool_list[2]: # 如果通过了检验，则init_labels当中加入这个变量，并且记录
@@ -541,7 +537,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
                                                         ignore_index=True)
                     
                     if summary_output: # 如果需要输出则输出
-                        with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w') as f:
+                        with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w' , encoding='utf-8') as f:
                             f.write(model.summary().as_text())   # 向目标文件夹内的文件输出对应的summary并形成单独文件
                             
                 else: # 如果没有通过，则再次剔除这个变量，并且记录
@@ -551,7 +547,7 @@ def Stepwise_reg(data ,filepath = None , summary_output = True , result_output =
                                                             np.round(model.pvalues.to_list() , 4) , round(model.rsquared_adj , 4) , round(model.f_pvalue , 5) , formula]] , columns = stepwise_columns) ,
                                                         ignore_index=True)
                     if summary_output: # 如果需要输出则输出
-                        with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w') as f:
+                        with open(dir_path+'/formula'+str(stepwise_df.shape[0])+'.txt' , 'w' , encoding='utf-8') as f:
                             f.write(model.summary().as_text())   # 向目标文件夹内的文件输出对应的summary并形成单独文件
                             
             if result_output: stepwise_df.to_excel(dir_path + '/result.xlsx' , encoding='utf-8')
@@ -749,16 +745,14 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
     stepwise_resultdf_list = []
     if len(args_list) == 1: # 如果参数list只有一个，说明只需要进行一次Stepwise_reg , 故而此时不需要多线程
         stepwise_resultdf = Stepwise_reg(args_list[0][0] , filepath = args_list[0][1] , summary_output = args_list[0][2] , result_output = args_list[0][3] ,  significance_level = args_list[0][4] , higher_term = args_list[0][5])
-        stepwise_resultdf_list.append(stepwise_resultdf)
+        stepwise_resultdf_list = [stepwise_resultdf]
     
+    
+    # 调用多线程
     else:
-    # TODO
         with Pool(len(args_list)) as p:  # 使用 4 个进程
             results = p.starmap(Stepwise_reg, args_list)
-    
-    
-    
-    
+        stepwise_resultdf_list = results # 因为调用了多线程，所以此时result是无序的
     
     
     return mode , X_list , args_list , stepwise_resultdf_list
@@ -770,15 +764,31 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
     
     
 if __name__=="__main__":
-    df1 = pd.read_csv("data/select_data.csv",encoding = "utf-8")
-    df2 = pd.read_csv('data/label_train.csv',index_col=0)
-    index = df2.index
-    pre_data = df1.loc[index , ].join(df2['MATH'])
-    pre_data = pre_data.drop(pre_data.columns[0] , axis=1)
-    pre_data = pre_data[['MATH']+list(pre_data.columns[0:-1].values)]
-    pre_data = pre_data.head(600).reset_index(drop=True)
-    stepwise_df = Stepwise_reg(pre_data)
-    stepwise_df.to_csv('result_df.csv')
+    new_df = pd.read_csv('./data/test/display.csv' , index_col = 0)
+    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = None ,  mode = None, filepath = './test/construct_data')
+    
+    
+    # df = pd.read_excel("data/merge_shop_coupon_nm.xls" , index_col = 0)
+    # columns = ['关键词', '城市', '评分', '评价数', '人均' , '团购价', '购买人数']
+    # data = df[columns]
+    
+    # mode , Xlist , args_list , result_list = Reg.Automatic_reg(df[['评价数','城市' , '评分', '人均']] , dataclass = None , mode = ['linear'] , filepath = './test')
+    
+    # * 用北京房价数据进行多线程测试
+    # * dataclass 为 [0, 2, 1, 1, 0, 1, 2, 1, 2, 1]
+    # df = pd.read_csv("data/test_data.csv",encoding = "utf-8")  
+    # mode , Xlist , args_list , result_list = Automatic_reg(df , dataclass = [0, 2, 1, 1, 0, 1, 2, 1, 2, 1] ,target_col = 'area' ,  mode = None , filepath = './test/construct_data')
+    
+    
+    # df1 = pd.read_csv("data/select_data.csv",encoding = "utf-8")
+    # df2 = pd.read_csv('data/label_train.csv',index_col=0)
+    # index = df2.index
+    # pre_data = df1.loc[index , ].join(df2['MATH'])
+    # pre_data = pre_data.drop(pre_data.columns[0] , axis=1)
+    # pre_data = pre_data[['MATH']+list(pre_data.columns[0:-1].values)]
+    # pre_data = pre_data.head(600).reset_index(drop=True)
+    # stepwise_df = Stepwise_reg(pre_data)
+    # stepwise_df.to_csv('result_df.csv')
     
     
     

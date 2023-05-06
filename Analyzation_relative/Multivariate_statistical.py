@@ -95,7 +95,6 @@ def PCA(df , use_cor = True , percentage = 0.85 , ax = None):   #  搞定了！
         cov_matrix = df.cov()
     # Perform SVD on the cov_matrix 
     U, S, V = svd(cov_matrix)
-    print(S)
     # Calculate the explained variance ratio and eigenvectors
     variance_explained = S/np.sum(S) # 计算各特征向量的方差贡献率
     cumulative_explained = variance_explained #计算累计方差贡献率
@@ -119,7 +118,7 @@ def PCA(df , use_cor = True , percentage = 0.85 , ax = None):   #  搞定了！
     
     for index , i in enumerate(cumulative_explained):
         if i >= percentage:
-            return V.T[:,:index+1] # 选取满足累计方差解释率到persentage的index个主成分对应的特征向量并返回
+            return V.T[:,:index+1] , pd.DataFrame( df.to_numpy() @ V.T[:,:index+1] , columns = [f'Y{i+1}' for i in range(index+1)]) # 选取满足累计方差解释率到persentage的index个主成分对应的特征向量并返回 , 同时返回对应的主成分变量
 
 
 

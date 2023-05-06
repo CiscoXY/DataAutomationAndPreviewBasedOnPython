@@ -725,7 +725,7 @@ def Auto_plt(data , dataclass , filepath = None):
         time = datetime.now() ; current_time = f'{time.month}_{time.day}_{time.hour}_{time.minute}' # 记录当前的系统时间
         if filepath == None:
             dir_path = './descriptive_result_output/'+current_time
-        else : dir_path = filepath
+        else : dir_path = filepath +'/' +  current_time
         if not os.path.exists(dir_path):  # 如果不存在该文件夹，则创建该文件夹。
             os.makedirs(dir_path)
         
@@ -747,9 +747,9 @@ def Auto_plt(data , dataclass , filepath = None):
             Numerical_autoplt(new_data.iloc[:,0] , ax1 = axes[0] , ax2 = axes[1])
             plt.savefig(dir_path + '/'+col_names[0]+'.png' , dpi = dpi)
         elif num_len == 2:
-            Two_dim_autoplt(new_data[col_names[:2]] , dataclass = [0 , 0] , filepath=filepath)
+            Two_dim_autoplt(new_data[col_names[:2]] , dataclass = [0 , 0] , filepath=dir_path)
         elif num_len == 3:
-            Three_dim_autoplt(new_data[col_names[:3]] , dataclass = [0 , 0 , 0] , filepath = filepath)
+            Three_dim_autoplt(new_data[col_names[:3]] , dataclass = [0 , 0 , 0] , filepath = dir_path)
         else:
             for i in range(num_len): # 每个维度的变量都要作图
                 fig , axes = plt.subplots(1,  2 , figsize = (8 , 4) , dpi = dpi)
@@ -785,9 +785,9 @@ def Auto_plt(data , dataclass , filepath = None):
                 Multitpye_autoplt(new_data.iloc[: , num_len] , ax1 = axes[0] , ax2 = axes[1])
             plt.savefig(dir_path + '/'+col_names[num_len]+'.png' , dpi = dpi)
         elif type_len == 2:
-            Two_dim_autoplt(new_data.iloc[: , num_len:num_len+2] , dataclass = type_class , filepath = filepath)
+            Two_dim_autoplt(new_data.iloc[: , num_len:num_len+2] , dataclass = type_class , filepath = dir_path)
         elif type_len == 3:
-            Three_dim_autoplt(new_data.iloc[: , num_len:num_len+3] , dataclass = type_class , filepath = filepath)
+            Three_dim_autoplt(new_data.iloc[: , num_len:num_len+3] , dataclass = type_class , filepath = dir_path)
             
         # 当分类型变量的数量超过4时，仅仅绘制其自身的图片，如果需要研究更多相关性，建议三维或者二维图片.
         else:

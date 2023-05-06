@@ -15,10 +15,18 @@ params = {'legend.fontsize': 7,}
 
 plt.rcParams.update(params)
 
-def Normality_test(data , figsize = (8 , 4) , dpi = 100 , kde = True , plot = True):
+def Normality_test(data , kde = True , ax1 = None , ax2 = None):
     """
     用于正态性检验,返回三个值,fig、axes和统计量表
-    plot = True 默认为画图
+
+    Args:
+        data (pd.Series ; list ; np.array): 输入的数据
+        kde (bool, optional): 是否绘制核密度曲线. Defaults to True.
+        ax1 (_type_, optional): plt.subplot的子图对象 , 用于绘制直方图. Defaults to None.
+        ax2 (_type_, optional): plt.subplot的子图对象 , 用于绘制正态qq图 . Defaults to None.
+
+    Returns:
+        sta_frame(pd.DataFrame): 存储着正态性检验的统计量和对应p值的数据框
     """
     n = len(data)
     if(n >= 2000): # 大样本
@@ -38,17 +46,16 @@ def Normality_test(data , figsize = (8 , 4) , dpi = 100 , kde = True , plot = Tr
             Anderson = [Anderson.statistic , 0.15] # 如果index本身是空的，那么说明哪个显著性水平都不能说明数据非正态
         sta_frame = pd.DataFrame(np.array([Shapiro , Anderson]) , columns = ['statistic' , 'p-value'] , index = ['Shapiro-Wilk' , 'Anderson-Darling'])
         
-    if(plot):
-        fig , axes = plt.subplots(1 , 2 , figsize = figsize , dpi = dpi)
-        fig.patch.set_facecolor("white")
-        sns.histplot(data , kde = kde , ax = axes[0])
+    if(ax1 != None):
+        sns.histplot(data , kde = kde , ax = ax1)
+        ax1.set_title("Histogram")
+    
+    if (ax2 != None):
         qqplot = ProbPlot(data , fit = True)
-        qqplot.qqplot(line = 'q' , ax = axes[1])
-        axes[0].set_title("Histogram")
-        axes[1].set_title("Norm QQ")
-        return fig , axes , sta_frame
-    else:
-        return sta_frame
+        qqplot.qqplot(line = 'q' , ax = ax2)
+        ax2.set_title("Norm QQ")
+        
+    return sta_frame
     
     
 if __name__ == '__main__':

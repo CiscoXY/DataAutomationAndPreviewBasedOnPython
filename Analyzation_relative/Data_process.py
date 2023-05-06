@@ -167,7 +167,7 @@ def Outlier_TreatAndPlot(data , dataclass = None , plot = True , filepath = None
     对于一维二分型数据, 如果本身数据有3个种类,但是前两个种类的占比超过 95% 则高度怀疑第三个种类是异常值
     对于一维多分类型数据,暂无较为泛泛用的解决方法,请手动识别
 
-    对于多维数值型数据,提供两种甄别方案: 置信椭球法和LocalOutlierFactor(LOF)法，可以在参数中选择
+    对于多维数值型数据,提供两种甄别方案: 置信椭球法和稳健法，可以在参数中选择
 
     对于甄别出的异常值,有2种处理方案可供选择(如果需要处理的话) : 删除/替换  (对于一维数值型,选用中位数或者均值或者众数替换)
                                                                 (对于一维二分型数据,以非异常值部分的对应频率为概率进行生成)
@@ -179,16 +179,27 @@ def Outlier_TreatAndPlot(data , dataclass = None , plot = True , filepath = None
     
     Args:
         data (dataframe): dataframe
+        
         dataclass (list, optional): 这个dataframe对应的dataclass 如果为None则会自动识别(可能出错并且此时无法甄别二分类型的异常值). Defaults to None.
+        
         plot (bool, optional): 是否画图. Defaults to True.
+        
         filepath (str, optional): 要保存的文件路径. Defaults to None.
+        
         num_method(str , optional): 对于一维数值型数据的甄别方法,默认为分位数法,即Q3+1.5IQR和Q1-1.5IQR外的数据认定为异常值 也可以使用Z分数法,即认为标准化后数据的Zscore得分的绝对值>3的为异常值 可选参数['quantile' , 'zscore'] . Default to 'quantile'
+        
         num_treat(str , optional) : 对于异常值的处理 , 默认是删除,可选用均值或者中位数进行替换 可选参数['delete' , 'median' , 'mean' , None] . Default to 'delete'
+        
         binary_boundary(str , optional) : 对于二分类型变量的临界值,如果占比最多的两个变量的占比比例超过这个临界值,则认定剩余的种类为异常值
+        
         binary_treat(str , optional) : 对于二分类型变量的异常值的处理 , 可选参数['delete' ,'frequency' , None] , None认定为不做处理。 Default to 'delete'
+        
         multi_num_method(str , optional) : 对于多维数值型变量的甄别方法, 可选参数['MCD' , 'CD']. Default to 'MCD' , MCD为Minimum Covariance Determinant/ CD 则是常见的置信椭圆
+        
         contamination(float , optional) : 多维数值型数据当中认为的异常值占比,默认为0.05
+        
         multi_num_treat(str , optional) : 对于多维数值型变量异常值的处理方法, 可选参数['delete' , 'mean' , None]. 'mean'为使用均指向量作替换 . Default to 'delete'
+        
     """
     
     if isinstance(data , pd.Series):
@@ -201,7 +212,7 @@ def Outlier_TreatAndPlot(data , dataclass = None , plot = True , filepath = None
             if (len(data.columns) != len(dataclass)):
                 raise ValueError('The length of data must = the length of dataclass')
             new_data , new_class = DS.data_sort(data , dataclass)
-        col_names = data.columns.to_list()
+        col_names = new_data.columns.to_list()
         p = len(col_names)
     else:
         raise ValueError('You must input Series or Dataframe')
@@ -437,7 +448,7 @@ def Outlier_TreatAndPlot(data , dataclass = None , plot = True , filepath = None
         pass # 如果二分变量没有异常值就跳过
     
     # 最后返回数值型变量当中的异常值对应的index ; 二分型变量当中的异常值对应的index ; 处理完异常值后的数据框(此数据框的列的顺序为： 数值型 ； 二分型；  多分型)
-    return num_outlierindex , binary_outlierindex , processed_df # binary_outlierindex是所有二分类变量的异常值的索引组成的index，去重过了
+    return num_outlierindex , binary_outlierindex , processed_df[col_names] # binary_outlierindex是所有二分类变量的异常值的索引组成的index，去重过了
 
 
 
