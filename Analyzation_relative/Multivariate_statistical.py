@@ -122,7 +122,7 @@ def PCA(df , use_cor = True , percentage = 0.85 , ax = None):   #  搞定了！
 
 
 
-def CCA_select(data_X , data_Y , cca_num , is_cov = False , Cov = None):
+def CCA(data_X , data_Y , cca_num , is_cov = False , Cov = None):
     '''
     传入样本数据X和数据Y,均为pandas的dataframe形式,给定要的典型相关变量个数,输出对应的相关系数与相关变量的线性变换向量
     如果传入的是协方差矩阵,则data_X为数据X的变量数p,data_Y为数据Y的变量数q,is_cov应为True,Cov为传入的协方差矩阵

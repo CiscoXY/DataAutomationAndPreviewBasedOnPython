@@ -267,7 +267,7 @@ def res_test(Residual , X , significance_value = 0.05 , higher_term = True , lab
     Labels : 是否指定参与模型的自变量名称,应为list型,如果不指定,则默认所有变量参与了建模
     """
     # 正态性test
-    norm_df = Normality_test(Residual, plot=False) 
+    norm_df = Normality_test(Residual) 
     # if((norm_frame['p-value']<significance_value).all()):
     #     print('The p-values show that the residual is strongly Non-normal')
     # elif((norm_frame['p-value']<significance_value).any()):
@@ -312,11 +312,11 @@ def res_test(Residual , X , significance_value = 0.05 , higher_term = True , lab
     for col in Labels:
         # 获取该列的唯一值
         unique_values = X[col].unique()
-        # 如果该列的唯一值只有两个，并且其中一个，则无法进行white检验，因为会出现严格多重共线性
+        # 如果该列的唯一值只有两个，并且其中一个为0，则无法进行white检验，因为会出现严格多重共线性
         if len(unique_values) == 2 and any(x == 0 for x in unique_values):
             judge = True
-    if((not judge) and len(Labels)<= 50 and (not higher_term)): # 如果不是二元且均为0和1且数据中不含有高次项，则可以进行white检验
-        [lm , lm_pvalue , F , F_pvalue] = het_white(Residual , X[Labels])
+    if((not judge) and len(Labels)<= 50 and (not higher_term)): # 如果不是二元且均为0和1且数据中不含有高次项且满秩，则可以进行white检验
+        [lm , lm_pvalue , F , F_pvalue] = het_white(Residual , sm.add_constant(X[Labels]))
         Reg_relative_df.loc['White_LM'] = [lm , lm_pvalue]
         Reg_relative_df.loc['White_F'] = [F , F_pvalue]
     
@@ -591,7 +591,6 @@ def Ridge_trace_analysis(data , explained_var = None , k = np.arange(0 , 100 , 1
     return ret
     
 
-#   # TODO 多线程   明天写  claude牛逼！
 # 多线程模块描述：
 # 输入原始data ，输入想要自动判断的模式，传递参数为一个list，list当中存储着想要全自动回归的模型类别。 随后再特定文件路径内输出全自动回归的判断过程和结果，所用函数为 Stepwise_reg
 
@@ -764,8 +763,12 @@ def Automatic_reg(data , dataclass = None , target_col = None , mode = None , fi
     
     
 if __name__=="__main__":
-    new_df = pd.read_csv('./data/test/display.csv' , index_col = 0)
-    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = None ,  mode = None, filepath = './test/construct_data')
+    # * 使用构建的数据进行自动回归
+    # new_df = pd.read_csv('./data/test/display.csv' , index_col = 0)
+    # mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = None ,  mode = None, filepath = './test/construct_data')
+    
+    new_df = pd.read_csv('./data/test/winequality-white-processed.csv' , index_col = 0)
+    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'alcohol' ,  mode = None, filepath = './test/wine')
     
     
     # df = pd.read_excel("data/merge_shop_coupon_nm.xls" , index_col = 0)
@@ -779,41 +782,4 @@ if __name__=="__main__":
     # df = pd.read_csv("data/test_data.csv",encoding = "utf-8")  
     # mode , Xlist , args_list , result_list = Automatic_reg(df , dataclass = [0, 2, 1, 1, 0, 1, 2, 1, 2, 1] ,target_col = 'area' ,  mode = None , filepath = './test/construct_data')
     
-    
-    # df1 = pd.read_csv("data/select_data.csv",encoding = "utf-8")
-    # df2 = pd.read_csv('data/label_train.csv',index_col=0)
-    # index = df2.index
-    # pre_data = df1.loc[index , ].join(df2['MATH'])
-    # pre_data = pre_data.drop(pre_data.columns[0] , axis=1)
-    # pre_data = pre_data[['MATH']+list(pre_data.columns[0:-1].values)]
-    # pre_data = pre_data.head(600).reset_index(drop=True)
-    # stepwise_df = Stepwise_reg(pre_data)
-    # stepwise_df.to_csv('result_df.csv')
-    
-    
-    
-    # model = smf.ols(Formula_encoder(pre_data.columns) , data = pre_data).fit()
-    # Bool_value , Bool_list , spearman_label , GQ_label = Model_exception_test(model.resid , pre_data , model)
-    # print(Bool_value , Bool_list , spearman_label , GQ_label)
-    
-    
-    
-    
-    # model1_CY = smf.ols('rent ~ area + room + subway' , data =Chaoyang).fit()
-    # fitvalue1_CY = model1_CY.fittedvalues
-    # res = model1_CY.resid
-    
-    # df1 , df2 , df3 , df4  , df5= res_test(res , fitvalue1_CY , Chaoyang)
-    # print(df1 ,'\n', df2 , '\n' , df3 , '\n' , df4  , '\n' , df5)
-    
-    
-    # fig , axes = res_plot(res , fitvalue1_CY)
-    # plt.show()
-    
-    # print(Endogeneity_test(model1_CY))
-    
-    
-    # fig , axes = plt.subplots(1 , 1 , figsize = (8 , 8) , dpi = 100)
-    # print(Ridge_trace_analysis(Chaoyang ,k = np.arange(0 , 10000 , 10) ,  ax = axes))
-    # plt.show()
     
