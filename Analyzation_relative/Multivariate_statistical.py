@@ -63,7 +63,7 @@ def T2_region(df , alpha = 0.05):
     返回一个pd.dataframe形式的数据框,记录p维参数的对应置信下上限
     '''
     X = df.values
-    n , p = X.shape ; S = np.cov(X.T) ; mu = np.average(X , axis = 0)
+    n , p = X.shape ; S = np.cov(X.T) ; mu = np.average(X , axis = 1)
     F_alpha = f.isf(alpha , p , n-p) #* 显著性水平alpha = 0.05
     params_1 = p*(n-1)/(n-p) * F_alpha
     inf_t2 = [] ; sup_t2 = []

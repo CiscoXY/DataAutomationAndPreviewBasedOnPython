@@ -1,0 +1,36 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                alcohol   R-squared:                       0.880
+Model:                            OLS   Adj. R-squared:                  0.880
+Method:                 Least Squares   F-statistic:                     3567.
+Date:                Mon, 15 May 2023   Prob (F-statistic):               0.00
+Time:                        23:13:31   Log-Likelihood:                -2728.8
+No. Observations:                4873   AIC:                             5480.
+Df Residuals:                    4862   BIC:                             5551.
+Df Model:                          10                                         
+Covariance Type:            nonrobust                                         
+========================================================================================
+                           coef    std err          t      P>|t|      [0.025      0.975]
+----------------------------------------------------------------------------------------
+const                  677.0252      5.037    134.410      0.000     667.150     686.900
+fixed acidity            0.4978      0.009     53.924      0.000       0.480       0.516
+volatile acidity         0.6747      0.065     10.347      0.000       0.547       0.803
+citric acid              0.2729      0.054      5.017      0.000       0.166       0.380
+residual sugar           0.2220      0.003     82.781      0.000       0.217       0.227
+free sulfur dioxide     -0.0032      0.000     -6.759      0.000      -0.004      -0.002
+total sulfur dioxide     0.0014      0.000      6.557      0.000       0.001       0.002
+density               -683.5154      5.153   -132.646      0.000    -693.617    -673.413
+pH                       2.2390      0.049     45.853      0.000       2.143       2.335
+sulphates                0.8935      0.055     16.146      0.000       0.785       1.002
+quality                  0.0526      0.008      6.554      0.000       0.037       0.068
+==============================================================================
+Omnibus:                     1048.854   Durbin-Watson:                   1.699
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            17430.153
+Skew:                           0.572   Prob(JB):                         0.00
+Kurtosis:                      12.194   Cond. No.                     1.78e+05
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 1.78e+05. This might indicate that there are
+strong multicollinearity or other numerical problems.

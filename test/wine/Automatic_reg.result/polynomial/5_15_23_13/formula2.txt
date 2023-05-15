@@ -1,0 +1,46 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                alcohol   R-squared:                       0.887
+Model:                            OLS   Adj. R-squared:                  0.887
+Method:                 Least Squares   F-statistic:                     1905.
+Date:                Mon, 15 May 2023   Prob (F-statistic):               0.00
+Time:                        23:13:31   Log-Likelihood:                -2583.0
+No. Observations:                4873   AIC:                             5208.
+Df Residuals:                    4852   BIC:                             5344.
+Df Model:                          20                                         
+Covariance Type:            nonrobust                                         
+==========================================================================================
+                             coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------------------
+const                   1.363e+04    897.176     15.188      0.000    1.19e+04    1.54e+04
+fixed acidity              0.8095      0.065     12.469      0.000       0.682       0.937
+volatile acidity           0.8317      0.216      3.849      0.000       0.408       1.255
+citric acid                0.5810      0.152      3.831      0.000       0.284       0.878
+residual sugar             0.2638      0.005     48.102      0.000       0.253       0.275
+chlorides                 -2.3304      0.824     -2.828      0.005      -3.946      -0.715
+free sulfur dioxide       -0.0059      0.001     -6.840      0.000      -0.008      -0.004
+total sulfur dioxide       0.0027      0.001      3.423      0.001       0.001       0.004
+density                -2.675e+04   1806.309    -14.809      0.000   -3.03e+04   -2.32e+04
+pH                        -2.7812      1.129     -2.464      0.014      -4.994      -0.568
+quality                    0.0384      0.008      4.808      0.000       0.023       0.054
+fixed acidity^2           -0.0229      0.004     -5.128      0.000      -0.032      -0.014
+volatile acidity^2        -0.3451      0.286     -1.207      0.228      -0.906       0.216
+citric acid^2             -0.4467      0.169     -2.640      0.008      -0.778      -0.115
+residual sugar^2          -0.0039      0.000    -11.914      0.000      -0.005      -0.003
+chlorides^2                9.7311      3.568      2.727      0.006       2.735      16.727
+free sulfur dioxide^2   2.213e-05   7.23e-06      3.060      0.002    7.95e-06    3.63e-05
+total sulfur dioxide^2 -4.699e-06   2.52e-06     -1.862      0.063   -9.65e-06    2.49e-07
+density^2               1.312e+04    909.173     14.435      0.000    1.13e+04    1.49e+04
+pH^2                       0.7726      0.175      4.415      0.000       0.430       1.116
+sulphates^2                0.7751      0.049     15.981      0.000       0.680       0.870
+==============================================================================
+Omnibus:                     1123.832   Durbin-Watson:                   1.693
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            17447.666
+Skew:                           0.674   Prob(JB):                         0.00
+Kurtosis:                      12.171   Cond. No.                     9.22e+09
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 9.22e+09. This might indicate that there are
+strong multicollinearity or other numerical problems.
