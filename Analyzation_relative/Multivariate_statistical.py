@@ -103,13 +103,16 @@ def PCA(df , use_cor = True , percentage = 0.85 , ax = None):   #  搞定了！
         cumulative_explained[i] = cumulative_explained[i-1] +variance_explained[i]
     cumulative_explained = np.round(cumulative_explained , 3)
     if ax is not None:
-        x = range(1 , len(S)+1)
-        ax.bar(x , cumulative_explained , color= (240/255, 154/255, 74/255 , 0.5) , width = 0.5)
-        ax.plot(x , cumulative_explained , '-o' , label = 'Cumulative Explained Variance')
+        if(len(S) <= 20):
+            x = range(1 , len(S)+1)
+        else:
+            x = range(1 , 21)
+        ax.bar(x , cumulative_explained[:len(x)] , color= (240/255, 154/255, 74/255 , 0.5) , width = 0.5)
+        ax.plot(x , cumulative_explained[:len(x)] , '-o' , label = 'Cumulative Explained Variance')
         ax.set_xlabel('累计主成分数量') 
         ax.set_ylabel('Cumulative Explained Variance')
         ax.set_xticks(x)
-        for x, y in zip(x, cumulative_explained):
+        for x, y in zip(x, cumulative_explained[:len(x)]):
             ax.text(x, y-0.05, str(y), ha='center')
         ax.legend(loc = 'best')
         ax.set_title('方差累计贡献率')

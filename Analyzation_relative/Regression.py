@@ -767,8 +767,14 @@ if __name__=="__main__":
     # new_df = pd.read_csv('./data/test/display.csv' , index_col = 0)
     # mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = None ,  mode = None, filepath = './test/construct_data')
     
-    new_df = pd.read_csv('./data/test/winequality-white-processed.csv' , index_col = 0)
-    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'alcohol' ,  mode = None, filepath = './test/wine')
+    # * 使用白葡萄酒
+    # new_df = pd.read_csv('./data/test/winequality-white-processed.csv' , index_col = 0)
+    # mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'alcohol' ,  mode = None, filepath = './test/wine')
+    
+    # * 使用PISA主成分后的数据
+    new_df = pd.read_csv('./data/test/PISA-processed.csv' , index_col = 0)
+    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'MATH' ,  mode = None, filepath = './test/PISA')
+    
     
     
     # df = pd.read_excel("data/merge_shop_coupon_nm.xls" , index_col = 0)
