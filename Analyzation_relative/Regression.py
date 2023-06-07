@@ -772,10 +772,12 @@ if __name__=="__main__":
     # mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'alcohol' ,  mode = None, filepath = './test/wine')
     
     # * 使用PISA主成分后的数据
-    new_df = pd.read_csv('./data/test/PISA-processed.csv' , index_col = 0)
-    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'MATH' ,  mode = None, filepath = './test/PISA')
+    # new_df = pd.read_csv('./data/test/PISA-processed.csv' , index_col = 0)
+    # mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = None ,target_col = 'MATH' ,  mode = None, filepath = './test/PISA')
     
-    
+    # * 使用北京租房数据进行演示
+    new_df = pd.read_csv('./data/test_data.csv' , encoding = 'utf-8')
+    mode , Xlist , args_list , result_list = Automatic_reg(new_df , dataclass = [0, 2, 1, 1, 0, 1, 2, 1, 2, 1] ,target_col = None ,  mode = None , filepath = './test/BeiJing')
     
     # df = pd.read_excel("data/merge_shop_coupon_nm.xls" , index_col = 0)
     # columns = ['关键词', '城市', '评分', '评价数', '人均' , '团购价', '购买人数']

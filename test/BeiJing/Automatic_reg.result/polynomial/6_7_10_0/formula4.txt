@@ -1,0 +1,31 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                   rent   R-squared:                       0.252
+Model:                            OLS   Adj. R-squared:                  0.251
+Method:                 Least Squares   F-statistic:                     246.9
+Date:                Wed, 07 Jun 2023   Prob (F-statistic):          9.56e-318
+Time:                        10:00:26   Log-Likelihood:                -40731.
+No. Observations:                5149   AIC:                         8.148e+04
+Df Residuals:                    5141   BIC:                         8.153e+04
+Df Model:                           7                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const       1641.7748     44.005     37.309      0.000    1555.507    1728.043
+area          87.1009      2.820     30.888      0.000      81.573      92.629
+livingroom  -224.8651    103.647     -2.170      0.030    -428.056     -21.674
+bathroom     216.5968     63.324      3.420      0.001      92.454     340.740
+room         -79.7644     23.938     -3.332      0.001    -126.693     -32.836
+subway       360.8372     25.455     14.176      0.000     310.935     410.739
+bedroom      -87.7186     12.261     -7.154      0.000    -111.755     -63.682
+region       -28.3866      3.377     -8.407      0.000     -35.006     -21.767
+==============================================================================
+Omnibus:                      293.990   Durbin-Watson:                   1.655
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              359.695
+Skew:                           0.575   Prob(JB):                     7.82e-79
+Kurtosis:                       3.597   Cond. No.                         170.
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.

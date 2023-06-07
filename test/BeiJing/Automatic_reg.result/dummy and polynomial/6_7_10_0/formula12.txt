@@ -1,0 +1,35 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                   rent   R-squared:                       0.256
+Model:                            OLS   Adj. R-squared:                  0.255
+Method:                 Least Squares   F-statistic:                     196.5
+Date:                Wed, 07 Jun 2023   Prob (F-statistic):          5.53e-322
+Time:                        10:00:29   Log-Likelihood:                -40715.
+No. Observations:                5149   AIC:                         8.145e+04
+Df Residuals:                    5139   BIC:                         8.152e+04
+Df Model:                           9                                         
+Covariance Type:            nonrobust                                         
+===================================================================================
+                      coef    std err          t      P>|t|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+const            1881.4288     98.934     19.017      0.000    1687.476    2075.381
+area               91.1338     15.960      5.710      0.000      59.846     122.422
+room             -300.0765     54.762     -5.480      0.000    -407.433    -192.720
+bedroom           -83.7810     12.216     -6.858      0.000    -107.730     -59.832
+region            -28.1902      3.367     -8.373      0.000     -34.790     -21.590
+area^2             -1.9033      0.672     -2.833      0.005      -3.220      -0.586
+area*livingroom   -14.7165      6.844     -2.150      0.032     -28.133      -1.300
+area^2*bathroom     0.8046      0.264      3.047      0.002       0.287       1.322
+area^2*room         1.3393      0.295      4.538      0.000       0.761       1.918
+area*subway        27.3953      1.912     14.330      0.000      23.648      31.143
+==============================================================================
+Omnibus:                      293.431   Durbin-Watson:                   1.662
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              361.656
+Skew:                           0.569   Prob(JB):                     2.93e-79
+Kurtosis:                       3.624   Cond. No.                     3.33e+03
+==============================================================================
+
+Notes:
+[1] Standard Errors assume that the covariance matrix of the errors is correctly specified.
+[2] The condition number is large, 3.33e+03. This might indicate that there are
+strong multicollinearity or other numerical problems.
